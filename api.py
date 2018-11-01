@@ -47,36 +47,61 @@ def pullUsers(theURL):
     output = responseObject.json()
     return output
 
-def pullNotes(theURL, projID, issueID):
+def pullNotes(theURL):
     """
     Get Notes from an issue
-    param : theURL the endpoint, projID the project ID, issueID the issue ID
+    param : theURL the endpoint, projID the project ID, issueIID the issue ID
     return: output the JSON response
-    """
-    rebuiltEndPoint = theURL + '/' + projID + '/issues/' + issueID + '/notes'
-    responseObject = requests.get(rebuiltEndPoint, headers={"PRIVATE-TOKEN": theToken})
-    output = responseObject.json()
-    return output
+    """ 
+    subList = []
+    llist = []
+    
+    # Given a single ticket, using the gitlab API, read the ticket and all comments on it
+    issuesList = pullIssues(issues_url)
+
+    # parse the ticket and read all comments on it
+    for eachIssue in issuesList:
+        # extract the Project ID, Issue ID from each issue 
+        projID = str(eachIssue["project_id"])
+        issueIID = str(eachIssue["iid"])
+
+        #build the URL endpoint and extract 
+        rebuiltEndPoint = theURL + '/' + projID + '/issues/' + issueIID + '/notes'
+        output = requests.get(rebuiltEndPoint, headers={"PRIVATE-TOKEN": theToken})
+        noteObject = output.json()  
+        
+        #Maybe move the following loop to main and the two lists as well
+   
+        # loop through each note object, extract Date, Author,  and Comment Body
+        for eachNotes in noteObject:
+            noteBody = eachNotes["body"]
+            noteAuthor = eachNotes["author"]["name"]
+            Date = eachNotes["created_at"]
+            
+            subList.append(noteBody)
+            subList.append(noteAuthor)
+            subList.append(Date)
+            
+            # no info as to which notes belong to which issue
+            # maybe make a dict of {issue: List of issue notes}
+            
+    llist.append(subList) 
+    return llist
+    
 
 def main():
     """
     The main function
     """
-
-    # Given a single ticket, using the gitlab API, read the ticket and all comments on it
-    issuesList = pullIssues(issues_url)
-
-    # parse the ticket and read all comments on it
-
-    for item in issuesList:
-       
-        thisProjectID = str(item["project_id"])
-        thisIssueID = str(item["id"])
-
-        noteOutput = pullNotes(proj_url, thisProjectID, thisIssueID)
+    
+    # get list of notes and a few other relevant info 
+    notes = pullNotes(proj_url)
+    
+    for items in notes:
+        for item in items:
+            print(item)
         
-        print("------------------------------------------------------")
-        
-        print(noteOutput)
-     
-#main()
+    # final formatting should present dict of {date: [author, time logged]}
+    
+           
+main()
