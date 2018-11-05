@@ -1,9 +1,7 @@
 #import the important modules
 import requests
 import json
-
-# GitLab api token
-theToken = "2xywL1bzgihh5iq4npox"
+import config
 
 # issues url 
 issues_url = "https://gitlab.matrix.msu.edu/api/v4/issues"
@@ -21,7 +19,7 @@ def pullProjects(theURL):
     param : theURL the endpoint
     return: output the JSON response
     """
-    responseObject = requests.get(theURL, headers={"PRIVATE-TOKEN" : theToken})
+    responseObject = requests.get(theURL, headers={"PRIVATE-TOKEN" : config.theToken})
     output = responseObject.json()
     return output
 
@@ -32,7 +30,7 @@ def pullIssues(theURL):
     param : theURL the endpoint
     return: output the JSON response
     """
-    responseObject = requests.get(theURL, headers={"PRIVATE-TOKEN" : theToken})
+    responseObject = requests.get(theURL, headers={"PRIVATE-TOKEN" : config.theToken})
     output = responseObject.json()
     return output
 
@@ -43,7 +41,7 @@ def pullUsers(theURL):
     param : theURL the endpoint
     return: output the JSON response
     """
-    responseObject = requests.get(theURL, headers={"PRIVATE-TOKEN" : theToken})
+    responseObject = requests.get(theURL, headers={"PRIVATE-TOKEN" : config.theToken})
     output = responseObject.json()
     return output
 
@@ -53,40 +51,42 @@ def pullNotes(theURL):
     param : theURL the endpoint, projID the project ID, issueIID the issue ID
     return: output the JSON response
     """ 
-    subList = []
-    llist = []
     
     # Given a single ticket, using the gitlab API, read the ticket and all comments on it
-    issuesList = pullIssues(issues_url)
-
+    
+    issuesList = pullIssues(issues_url) # list of all issues by current user
+    
+    # get the first issue
+    oneIssue = issuesList[0]
+    
     # parse the ticket and read all comments on it
-    for eachIssue in issuesList:
-        # extract the Project ID, Issue ID from each issue 
-        projID = str(eachIssue["project_id"])
-        issueIID = str(eachIssue["iid"])
+    # extract the Project ID, Issue ID from each issue 
+    projID = str(oneIssue["project_id"])
+    issueIID = str(oneIssue["iid"])
 
-        #build the URL endpoint and extract 
-        rebuiltEndPoint = theURL + '/' + projID + '/issues/' + issueIID + '/notes'
-        output = requests.get(rebuiltEndPoint, headers={"PRIVATE-TOKEN": theToken})
-        noteObject = output.json()  
+    #build the URL endpoint and extract 
+    rebuiltEndPoint = theURL + '/' + projID + '/issues/' + issueIID + '/notes'
+    output = requests.get(rebuiltEndPoint, headers={"PRIVATE-TOKEN": config.theToken})
+    noteResponse = output.json()  
+    
+    listIssueNotes = []
+    concatNote = ""
+    myDict = {}
+    
+    # loop through each note object, extract Date, Author,  and Comment Body
+    for eachNote in noteResponse:
+        noteBody = eachNote["body"]
+        noteAuthor = eachNote["author"]["name"]
+        Date = eachNote["created_at"]
+        #timeSpent = 
         
-        #Maybe move the following loop to main and the two lists as well
-   
-        # loop through each note object, extract Date, Author,  and Comment Body
-        for eachNotes in noteObject:
-            noteBody = eachNotes["body"]
-            noteAuthor = eachNotes["author"]["name"]
-            Date = eachNotes["created_at"]
-            
-            subList.append(noteBody)
-            subList.append(noteAuthor)
-            subList.append(Date)
-            
-            # no info as to which notes belong to which issue
-            # maybe make a dict of {issue: List of issue notes}
-            
-    llist.append(subList) 
-    return llist
+        concatNote = (noteBody) + " " + (noteAuthor) + " "+ (Date)
+        listIssueNotes.append(concatNote)
+        
+        myDict[Date] = concatNote
+        # maybe make a dict of {issue: List of issue notes}
+        
+    return myDict
     
 
 def main():
@@ -94,14 +94,12 @@ def main():
     The main function
     """
     
+    print("Note-Body\t\t Author\t\t Date\t")
     # get list of notes and a few other relevant info 
     notes = pullNotes(proj_url)
     
-    for items in notes:
-        for item in items:
-            print(item)
-        
-    # final formatting should present dict of {date: [author, time logged]}
-    
-           
+    for k,v in notes.items():
+        print(k,v)
+    # final formatting should present dict of {date: [author, time_spent, date_logged]}
+         
 main()
