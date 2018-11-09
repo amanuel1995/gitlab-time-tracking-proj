@@ -2,6 +2,7 @@
 import requests
 import json
 import config
+import re
 
 # issues url 
 issues_url = "https://gitlab.matrix.msu.edu/api/v4/issues"
@@ -47,8 +48,8 @@ def pullUsers(theURL):
 
 def pullNotes(theURL):
     """
-    Get Notes from an issue
-    param : theURL the endpoint, projID the project ID, issueIID the issue ID
+    Get Notes from an issue --> (make this for a specific user)
+    param : theURL the endpoint, (maybe theAuthor author of the note, issueIID)
     return: output the JSON response
     """ 
     
@@ -61,45 +62,78 @@ def pullNotes(theURL):
     
     # parse the ticket and read all comments on it
     # extract the Project ID, Issue ID from each issue 
-    projID = str(oneIssue["project_id"])
+    projID = "239"#str(oneIssue["projID"])
     issueIID = str(oneIssue["iid"])
 
     #build the URL endpoint and extract 
-    rebuiltEndPoint = theURL + '/' + projID + '/issues/' + issueIID + '/notes'
-    output = requests.get(rebuiltEndPoint, headers={"PRIVATE-TOKEN": config.theToken})
+    builtEndPoint = theURL + '/' + projID + '/issues/' + issueIID + '/notes'
+    output = requests.get(builtEndPoint, headers={"PRIVATE-TOKEN": config.theToken})
     noteResponse = output.json()  
     
-    listIssueNotes = []
     concatNote = ""
     myDict = {}
     
     # loop through each note object, extract Date, Author,  and Comment Body
     for eachNote in noteResponse:
         noteBody = eachNote["body"]
-        noteAuthor = eachNote["author"]["name"]
+        noteAuthor = eachNote["author"]["username"]
         Date = eachNote["created_at"]
-        #timeSpent = 
         
+        # concatenate the note 
         concatNote = (noteBody) + " " + (noteAuthor) + " "+ (Date)
-        listIssueNotes.append(concatNote)
         
+        # regex to extract (d+(mo)\s\d+(w)\s\d+(d)) #### parse the JSON instead? ####
+        pattern = re.compile(r'^(?:added\s|subtracted\s)(\d+(mo)\s)?(\d+(w)\s)?'+ 
+                             '(\d+(d)\s)?(\d+(h)\s)?(\d+(m)\s)?of\stime\sspent\\'+
+                             'sat\s\d+-\d+-\d+\s\w+[.]\w+\s\d+-\d+-\d+(T)\d+[:]\d+[:]\d+[.]\d+[Z]$')
+        matches = pattern.finditer(concatNote)
+        
+        #matchesTuple = matches(matches)
+        
+        #populate the dictionary based on key = date, and value (string of author, body)
         myDict[Date] = concatNote
-        # maybe make a dict of {issue: List of issue notes}
         
-    return myDict
+        
+        ctr, mylist = 1, []
+        
+        for match in matches:
+            timeInfo = match.group(0).split(" ")
+            if (timeInfo[0] == 'added'):
+                while(timeInfo[ctr] != 'of'):
+                    mylist.append(timeInfo[ctr])
+                    ctr +=1
+            print(timeInfo)
+            
+    return matches
     
+
+#def parseJSONNote():
+#    """
+#    Parse JSON Notes from an issue --> (make this for a specific user)
+#    param : theURL the endpoint, 
+#    return: output the JSON response
+#    """ 
+
+
+#def calculateTimeFromMatch():
+#    """
+#    Parse string matches to add/subtract times and return the sum (make this perfor every user)
+#    param : theMacthObject 
+#    return: output the Dict {username: [sumTime, dateLogged, dateTimeSpent]}
+#    """ 
+
+
 
 def main():
     """
     The main function
     """
+
     
-    print("Note-Body\t\t Author\t\t Date\t")
     # get list of notes and a few other relevant info 
     notes = pullNotes(proj_url)
-    
-    for k,v in notes.items():
-        print(k,v)
+
+
     # final formatting should present dict of {date: [author, time_spent, date_logged]}
          
 main()
