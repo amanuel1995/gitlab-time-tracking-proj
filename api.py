@@ -58,51 +58,60 @@ def pullNotes(theURL):
     issuesList = pullIssues(issues_url) # list of all issues by current user
     
     # get the first issue
-    oneIssue = issuesList[0]
+    issueIID = str(issuesList[0]["iid"])
     
-    # parse the ticket and read all comments on it
     # extract the Project ID, Issue ID from each issue 
     projID = "239"#str(oneIssue["projID"])
-    issueIID = str(oneIssue["iid"])
 
-    #build the URL endpoint and extract 
+    #build the URL endpoint and extract notes in the issue
     builtEndPoint = theURL + '/' + projID + '/issues/' + issueIID + '/notes'
     output = requests.get(builtEndPoint, headers={"PRIVATE-TOKEN": config.theToken})
     noteResponse = output.json()  
     
     concatNote = ""
-    myDict = {}
+    #myDict = {}
     
     # loop through each note object, extract Date, Author,  and Comment Body
+
     for eachNote in noteResponse:
         noteBody = eachNote["body"]
         noteAuthor = eachNote["author"]["username"]
-        Date = eachNote["created_at"]
+#        Date = eachNote["created_at"]
         
         # concatenate the note 
-        concatNote = (noteBody) + " " + (noteAuthor) + " "+ (Date)
+        concatNote = (noteBody) + " " + (noteAuthor)
         
         # regex to extract (d+(mo)\s\d+(w)\s\d+(d)) #### parse the JSON instead? ####
-        pattern = re.compile(r'^(?:added\s|subtracted\s)(\d+(mo)\s)?(\d+(w)\s)?'+ 
-                             '(\d+(d)\s)?(\d+(h)\s)?(\d+(m)\s)?of\stime\sspent\\'+
-                             'sat\s\d+-\d+-\d+\s\w+[.]\w+\s\d+-\d+-\d+(T)\d+[:]\d+[:]\d+[.]\d+[Z]$')
+        pattern = re.compile(r'^(?:(added|subtracted)\s((\d+\w+\s)+)of\stime\sspent\sat\s)(\d+-\d+-\d+)\s\w+.\w+')
         matches = pattern.finditer(concatNote)
         
         #matchesTuple = matches(matches)
         
         #populate the dictionary based on key = date, and value (string of author, body)
-        myDict[Date] = concatNote
+        #myDict[Date] = concatNote
         
         
-        ctr, mylist = 1, []
+#        print(concatNote)
+#        ctr, mylist = 1, []
+#        
+#        for match in matches:
+#            timeInfo = match.group(0).split(" ")
+#            if (timeInfo[0] == 'added'):
+#                while(timeInfo[ctr] != 'of'):
+#                    mylist.append(timeInfo[ctr])
+#                    ctr +=1
+#                x = 0
+#                while (x < len(mylist)):
+#                    print(mylist[x])
+#                    x +=1
+#            print(timeInfo)
+        
+        
+        
         
         for match in matches:
-            timeInfo = match.group(0).split(" ")
-            if (timeInfo[0] == 'added'):
-                while(timeInfo[ctr] != 'of'):
-                    mylist.append(timeInfo[ctr])
-                    ctr +=1
-            print(timeInfo)
+            print(match.group())
+        
             
     return matches
     
@@ -118,7 +127,7 @@ def pullNotes(theURL):
 #def calculateTimeFromMatch():
 #    """
 #    Parse string matches to add/subtract times and return the sum (make this perfor every user)
-#    param : theMacthObject 
+#    param : theMatchObject 
 #    return: output the Dict {username: [sumTime, dateLogged, dateTimeSpent]}
 #    """ 
 
@@ -131,9 +140,8 @@ def main():
 
     
     # get list of notes and a few other relevant info 
-    notes = pullNotes(proj_url)
-
-
+    pullNotes(proj_url)
+    
     # final formatting should present dict of {date: [author, time_spent, date_logged]}
          
 main()
