@@ -2,7 +2,8 @@
 import requests
 import config
 import re
-import parser
+import parsy
+import parser as myparser
 
 # issues url 
 issues_url = "https://gitlab.matrix.msu.edu/api/v4/issues"
@@ -58,10 +59,10 @@ def pullNotes(theURL):
     issuesList = pullIssues(issues_url) # list of all issues by current user
     
     # get the first issue
-    issueIID = str(issuesList[0]["iid"])
+    issueIID = str(issuesList[0]["iid"]) # hardcoded
     
     # extract the Project ID, Issue ID from each issue 
-    projID = "231" #str(oneIssue["projID"])
+    projID = "231" # hardcoded
 
     #build the URL endpoint and extract notes in the issue
     builtEndPoint = theURL + '/' + projID + '/issues/' + issueIID + '/notes'
@@ -69,89 +70,88 @@ def pullNotes(theURL):
     noteResponse = output.json()  
     
     concatNote = ""
-    #myDict = {}
     
-    # loop through each note object, extract Date, Author,  and Comment Body
+    # Time calculation/aggregation
+    postiveTime = 0
+    negTime = 0
+
+    # loop through each note object, extract Date, Author, and Comment Body
 
     for eachNote in noteResponse:
         noteBody = eachNote["body"]
         noteAuthor = eachNote["author"]["username"]
-        Date = eachNote["created_at"]
+        noteDate = eachNote["created_at"]
         
         # concatenate the note 
-        concatNote = (noteBody) + " " + (noteAuthor)
+        concatNote = (noteBody) + ' ' + (noteAuthor) 
         
-        # regex to extract (d+(mo)\s\d+(w)\s\d+(d)) #### parse the JSON instead? ####
-        pattern = re.compile(r'^(?:(added|subtracted)\s((\d+\w+\s)+)of\stime\sspent\sat\s)(\d+-\d+-\d+)\s(\w+.\w+)')
-        matches = pattern.findall(concatNote)
-                
-        #populate the dictionary based on key = date, and value (string of author, body)
-        #myDict[Date] = concatNote
+        #strip whitespace from notebody
+        concatNote = concatNote.replace(" ", "")
         
-        
-#        print(concatNote)
-#        ctr, mylist = 1, []
-#        
-#        for match in matches:
-#            timeInfo = match.group(0).split(" ")
-#            if (timeInfo[0] == 'added'):
-#                while(timeInfo[ctr] != 'of'):
-#                    mylist.append(timeInfo[ctr])
-#                    ctr +=1
-#                x = 0
-#                while (x < len(mylist)):
-#                    print(mylist[x])
-#                    x +=1
-#            print(timeInfo)
-        
-        totalTime = 0
-        subTime = 0
-        
-        for match in matches:
-            if (match[0] == 'added'):
-                
-                splittedTime = match[1].split()
-                
-                try:
-                    hr = splittedTime[0][:-1]
-                    mins = splittedTime[1][:-1]
-                    
-                    totalTime += ((int(hr) * 3600) + (int(mins) * 60))
-                    
-                except:
-                    hr = 0
-                    
-                    mins = splittedTime[0][:-1]
-                    totalTime +=  (int(mins) * 60)
-            
-            if(match[0] == 'subtracted'):
-                
-                splittedTime = match[1].split()
-                try:
-                    hr = splittedTime[0][:-1]
-                    mins = splittedTime[1][:-1]
-                    
-                    print("hr: ", hr , "mins: ", mins)
-                    
-                    subTime += ((int(hr) * 3600) + (int(mins) * 60))
-                    
-                except:
-                    hr = 0
-                    mins = splittedTime[0][:-1]
-                    
-                    print("hr: ", hr , "mins: ", mins)
-                     
-                    subTime += ((int(mins) * 60))
-            print(subTime)
-            totalTime = totalTime - subTime
-            
-            print(match)
-            
-    print(totalTime/3600)
 
+        # parse only if it starts with 'added' or 'subtracted'
+        if (noteBody.split(' ')[0] == 'added' or noteBody.split()[0] == 'subtracted'):
+            # regex to extract
+            result = myparser.parser.parse(concatNote)
+        else:
+            result = ['added', '', '', '', '', '', '']
         
-    return matches
+        # loop through each modified note on the issue
+        if (result[0] == 'added'):
+            
+            # extract the time info from the result list
+            #day = result[1] 
+            hr = result[2] 
+            minutes = result[3] 
+
+            try:
+
+                # strip the trailing h/m 
+                hr = hr[:-1] or 0
+                minutes = minutes[:-1] or 0
+                
+                postiveTime = postiveTime + ((int(hr) * 3600) + (int(minutes) * 60))
+                
+            except:
+                hr = 0
+                minutes = 0
+                postiveTime = postiveTime + ((int(hr) * 3600) + (int(minutes) * 60))
+                
+                print('something wrong has happened while adding/extracting time information.')
+        
+        if(result[0] == 'subtracted'):
+            
+            # extract the time info from the result list
+            #day = result[1] 
+            hr = result[2] 
+            minutes = result[3]
+
+            try:
+                # strip the trailing h/m 
+                #day = day[:-1]
+                hr = hr[:-1] or 0
+                minutes = minutes[:-1] or 0
+
+                #calcuate 
+                negTime = negTime + ((int(hr) * 3600) + (int(minutes) * 60))
+                
+            except:
+                hr = 0
+                minutes = 0
+                negTime = negTime + ((int(hr) * 3600) + (int(minutes) * 60))
+                
+                print('something has happened while subtracting/extracting time information.')
+
+        # Total Sum 
+        totalTime = postiveTime - negTime
+        
+        print(result)
     
+    print('Total Positive Time: ', postiveTime)
+    print('Total Negative Time: ', negTime)
+    print('Total Time Spent: ',totalTime/3600)
+
+    return result
 
 
 def calculateTimeFromMatch(match):
