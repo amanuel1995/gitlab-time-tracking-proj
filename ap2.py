@@ -5,6 +5,8 @@ import parser as myparser
 import jsonresponse as myjson
 import math
 
+#################################################################
+# endpoints for GitLab API V.4
 # issues url 
 issues_url = "https://gitlab.matrix.msu.edu/api/v4/issues"
 
@@ -12,16 +14,23 @@ issues_url = "https://gitlab.matrix.msu.edu/api/v4/issues"
 proj_url = "https://gitlab.matrix.msu.edu/api/v4/projects"
 
 # users url 
-users_url = "https://gitlab.matrix.msu.edu/api/v4/users?per_page=100"
+users_url = "https://gitlab.matrix.msu.edu/api/v4/users"
 
-# CONSTANTS
-# 2,087 work hours per year, according to the U.S. Office of Personnel Management
-YEARSECONDS = int(7.513 * math.pow(10, 6))  # 7513200
+#################################################################
+# CONSTANTS used for calculations of total time spent
+
+YEARSECONDS = int(7.513 * math.pow(10, 6))  # according to the U.S. OPM
 MONTHSECONDS = 576000   # number of work seconds in a month (40hr * 4 weeks)
 WEEKSECONDS = 144000    # number of work seconds in a week (40hr)
 DAYSECONDS = 28800      # number of work seconds in a day (8hr)
 HOURSECONDS = 3600      # number of seconds in an hr
 MINSECONDS = 60         # number of seconds in a min
+MAXOBJECTSPERPAGE = 100 # Gitlab Pagination max
+#################################################################
+
+# params to inject while sending a GET request
+payload = {'per_page': MAXOBJECTSPERPAGE}
+#################################################################
 
 def pullProjects():
     """
@@ -45,8 +54,6 @@ def projIssue(projID, issueIID):
     builtEndPoint = proj_url + '/' + projID + '/issues/' + issueIID
     output = requests.get(builtEndPoint, headers={ "PRIVATE-TOKEN": config.theToken })
     issueResponse = output.json()
-
-    # issueResponse = myjson.json
     
     return issueResponse
 
@@ -98,12 +105,33 @@ def pullNotes(projID, issueIID):
     # Given a single ticket, using the gitlab API, read the ticket and all comments on it
 
     # build the URL endpoint and extract notes in the issue
-    # builtEndPoint = proj_url + '/' + projID + '/issues/' + issueIID + '/notes'
-    # output = requests.get(builtEndPoint, headers={"PRIVATE-TOKEN": config.theToken})
-    # noteJsonRes = output.json()  
+    builtEndPoint = proj_url + '/' + projID + '/issues/' + issueIID + '/notes'
+    output = requests.get(builtEndPoint, headers={"PRIVATE-TOKEN": config.theToken} , params = payload)
+    
+    ###########################################################################
+    # TODO 
+    # pre-process the response output 
+    # (issues that have more than 20 per_page / more than a page)
+    # get the headers, collect the info X-Total, X-Total-Pages, X-Page, X-Prev-Page, Link
+    # 
+    # headerDict = output.headers
+    # totalItems = headerDict['X-Total']
+    # totalPages = headerDict['X-Total-Pages']
+    # thisPage = headerDict['X-Page']
+    # prevPage = headerDict['X-Prev-Page']
+    # nextPage = headerDict['X-Next-Page']      # this returns '' if last page
+    # linkContainer = headerDict['Link']        # manipulate this to build endpoints
+    ############################################################################
 
-    noteJsonRes = myjson.jsonS
+    noteJsonRes = output.json()  
 
+    ####################################################
+    # Load the response from external JSON File
+    # uncomment the following line and change the jsonresponse.py file 
+    #
+    # noteJsonRes = myjson.jsonS
+    ####################################################
+    
     concatNote = ""
 
     finalDict = {} # has unique usernames as key and {+veTime : x, -veTime: y} as value
@@ -232,21 +260,18 @@ def getSingleIssueNote(projID, issueIID, noteID):
 
     return noteJsonRes
 
-def main():
+def calculateTimeSpentPerIssue(result):
     """
-    The main function
+    Calculate the time spent for a single issue for every user 
+    produce a 2D output of date and the corresponding time spent information for each user
+    on that date
     """
-    
-    # get list of notes and a few other relevant info 
-    result = pullNotes("231","3" )
-    
-    print(result)
 
-    
-    dict3 = {}
+    # further process the result
+    timeSpentDictByDate = {}
 
     # final formatting should present dict of {date: {user: [positiveTimeLogged, negativeTimeLogged]}}
-    for eachDate , eachTimeLst in result.items():
+    for eachDate, eachTimeLst in result.items():
         tmpDict = {}  # intermediate dict
         for eachLstItem in eachTimeLst:
             if (eachLstItem['user'] not in tmpDict):
@@ -255,36 +280,36 @@ def main():
                 # if the time info is not there, get the info
                 timeDict['totPosTime'] = eachLstItem['positivetime']
                 timeDict['totNegTime'] = eachLstItem['negativetime']
-                
+
                 # push the dict conataining time info into a temp dict with user as key
                 tmpDict[currUserToDict] = timeDict
-            
-            elif( eachLstItem['user'] in tmpDict ):
+
+            elif(eachLstItem['user'] in tmpDict):
                 # user to update
                 updateUserInDict = eachLstItem['user']
-                # if there is an entry for that user, sum the time info as value 
+                # if there is an entry for that user, sum the time info as value
                 tmpDict[updateUserInDict]['totPosTime'] += eachLstItem['positivetime']
                 tmpDict[updateUserInDict]['totNegTime'] += eachLstItem['negativetime']
 
-                # up4ate the entry for the user with total time info
-                # tmpDict[updateUserInDict] = timeDict
+        timeSpentDictByDate.setdefault(eachDate, []).append(tmpDict)
 
-        # # if its a new date
-        # if (eachDate not in dict3):
-        #     dict3[eachDate] = tmpDict
-
-        # # if date already showed up for other users
-        # else:
-        #     dict3[eachDate] = tmpDict
+    # maybe sort the final array based on dates before returning it 
+    return timeSpentDictByDate
     
-        # or uncomment what's below
-        dict3.setdefault(eachDate, []).append(tmpDict)
+
+def main():
+    """
+    The main function
+    """
     
-    print('###################################')
-    print(dict3)
-    print('###################################')
+    # get list of notes and a few other relevant info
+    result = pullNotes("231","3" )
+    
+    # invoke the function that aggregates time spent info for users summarized to the day
+    timeSpentInfo = calculateTimeSpentPerIssue(result)
 
-    # maybe sort the final array based on dates
-
+    print('###################################################################')
+    print(timeSpentInfo)
+    print('###################################################################')
 
 main()
