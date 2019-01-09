@@ -1,6 +1,28 @@
+# ignore the auth token file
 config.py
 # Jupyter Notebook
 .ipynb_checkpoints
+
+# ignore some other files and folders
+__pycache__/
+
+### VisualStudioCode ###
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+#### VisualStudioCode Patch ###
+## Ignore all local history of files
+.history
+
+### macOS ###
+## General
+.DS_Store
+.AppleDouble
+.LSOverride
+
 
 # IPython
 profile_default/
