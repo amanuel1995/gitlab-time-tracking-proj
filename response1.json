@@ -1,0 +1,476 @@
+[
+    {
+        "id": 12258,
+        "body": "added 4h 30m of time spent at 2018-11-17",
+        "author": {
+            "id": 5,
+            "name": "Seila Gonzalez",
+            "username": "seilage"
+        },
+        "created_at": "2018-12-18T20:42:03.526Z",
+        "updated_at": "2018-12-18T20:42:03.526Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 12258,
+        "body": "added 4h of time spent at 2018-11-17",
+        "author": {
+            "id": 5,
+            "name": "Seila Gonzalez",
+            "username": "seilage"
+        },
+        "created_at": "2018-12-18T20:42:03.526Z",
+        "updated_at": "2018-12-18T20:42:03.526Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 12219,
+        "type": null,
+        "body": "added 6h 30m of time spent at 2018-11-17",
+        "attachment": null,
+        "author": {
+            "id": 54,
+            "name": "Amanuel Goshu",
+            "username": "amanuel.goshu",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-12-18T15:42:25.796Z",
+        "updated_at": "2018-12-18T15:42:25.796Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10589,
+        "type": null,
+        "body": "subtracted 4h 30m of time spent at 2018-11-18",
+        "attachment": null,
+        "author": {
+            "id": 5,
+            "name": "Seila Gonzalez",
+            "username": "seilage",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-09T14:58:46.576Z",
+        "updated_at": "2018-11-09T14:58:46.576Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10587,
+        "type": null,
+        "body": "added 8h 30m of time spent at 2018-11-18",
+        "attachment": null,
+        "author": {
+            "id": 54,
+            "name": "Jeff Smith",
+            "username": "jeff.smith",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-09T14:56:35.557Z",
+        "updated_at": "2018-11-09T14:56:35.557Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10586,
+        "type": null,
+        "body": "added 7h 30m of time spent at 2018-11-18",
+        "attachment": null,
+        "author": {
+            "id": 5,
+            "name": "Seila Gonzalez",
+            "username": "seilage",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-09T14:56:07.504Z",
+        "updated_at": "2018-11-09T14:56:07.504Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10491,
+        "type": null,
+        "body": "added 7h 30m of time spent at 2018-12-01",
+        "attachment": null,
+        "author": {
+            "id": 5,
+            "name": "Seila Gonzalez",
+            "username": "seilage",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-08T15:12:19.114Z",
+        "updated_at": "2018-11-08T15:12:19.114Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10428,
+        "type": null,
+        "body": "subtracted 3h 30m of time spent at 2018-12-01",
+        "attachment": null,
+        "author": {
+            "id": 5,
+            "name": "Seila Gonzalez",
+            "username": "seilage",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-07T17:10:11.593Z",
+        "updated_at": "2018-11-07T17:10:11.593Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10420,
+        "type": null,
+        "body": "added 9h 30m of time spent at 2018-12-01",
+        "attachment": null,
+        "author": {
+            "id": 5,
+            "name": "Amanuel Goshu",
+            "username": "amanuel.goshu",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-07T16:43:20.306Z",
+        "updated_at": "2018-11-07T16:43:20.306Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10409,
+        "type": null,
+        "body": "subtracted 2h 30m of time spent at 2018-12-01",
+        "attachment": null,
+        "author": {
+            "id": 54,
+            "name": "Amanuel Goshu",
+            "username": "amanuel.goshu",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-07T16:27:13.188Z",
+        "updated_at": "2018-11-07T16:27:13.188Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10409,
+        "type": null,
+        "body": "added 10h 30m of time spent at 2018-12-01",
+        "attachment": null,
+        "author": {
+            "id": 5,
+            "name": "Jeff Smith",
+            "username": "jeff.smith",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-07T16:27:13.188Z",
+        "updated_at": "2018-11-07T16:27:13.188Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10409,
+        "type": null,
+        "body": "added 6h 30m of time spent at 2019-01-09",
+        "attachment": null,
+        "author": {
+            "id": 60,
+            "name": "Grace Morris",
+            "username": "grace.morris",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-07T16:27:13.188Z",
+        "updated_at": "2018-11-07T16:27:13.188Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10409,
+        "type": null,
+        "body": "added 7h 30m of time spent at 2019-01-09",
+        "attachment": null,
+        "author": {
+            "id": 61,
+            "name": "Danny Marshall",
+            "username": "danny.marshall",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-07T16:27:13.188Z",
+        "updated_at": "2018-11-07T16:27:13.188Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10409,
+        "type": null,
+        "body": "added 5h 30m of time spent at 2019-01-09",
+        "attachment": null,
+        "author": {
+            "id": 62,
+            "name": "Amanuel Goshu",
+            "username": "amanuel.goshu",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-07T16:27:13.188Z",
+        "updated_at": "2018-11-07T16:27:13.188Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10409,
+        "type": null,
+        "body": "added 6h 30m of time spent at 2019-01-09",
+        "attachment": null,
+        "author": {
+            "id": 60,
+            "name": "Seila Gonzalez",
+            "username": "seilage",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-07T16:27:13.188Z",
+        "updated_at": "2018-11-07T16:27:13.188Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10409,
+        "type": null,
+        "body": "added 6h 30m of time spent at 2019-01-09",
+        "attachment": null,
+        "author": {
+            "id": 60,
+            "name": "Jeff Smith",
+            "username": "jeff.smith",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-07T16:27:13.188Z",
+        "updated_at": "2018-11-07T16:27:13.188Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10409,
+        "type": null,
+        "body": "subtracted 2h 30m of time spent at 2018-12-01",
+        "attachment": null,
+        "author": {
+            "id": 5,
+            "name": "Jeff Smith",
+            "username": "jeff.smith",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-07T16:27:13.188Z",
+        "updated_at": "2018-11-07T16:27:13.188Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10409,
+        "type": null,
+        "body": "subtracted 30m of time spent at 2018-12-09",
+        "attachment": null,
+        "author": {
+            "id": 5,
+            "name": "Jeff Smith",
+            "username": "jeff.smith",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-07T16:27:13.188Z",
+        "updated_at": "2018-11-07T16:27:13.188Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10409,
+        "type": null,
+        "body": "added 1d of time spent at 2018-12-25",
+        "attachment": null,
+        "author": {
+            "id": 5,
+            "name": "Jeff Smith",
+            "username": "jeff.smith",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-07T16:27:13.188Z",
+        "updated_at": "2018-11-07T16:27:13.188Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10409,
+        "type": null,
+        "body": "added 1d of time spent at 2019-01-01",
+        "attachment": null,
+        "author": {
+            "id": 5,
+            "name": "Jeff Smith",
+            "username": "jeff.smith",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-07T16:27:13.188Z",
+        "updated_at": "2018-11-07T16:27:13.188Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10409,
+        "type": null,
+        "body": "added 1w 2d 3h of time spent at 2019-02-01",
+        "attachment": null,
+        "author": {
+            "id": 5,
+            "name": "Jeff Smith",
+            "username": "jeff.smith",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-07T16:27:13.188Z",
+        "updated_at": "2018-11-07T16:27:13.188Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10409,
+        "type": null,
+        "body": "subtracted 2w 3h of time spent at 2019-02-01",
+        "attachment": null,
+        "author": {
+            "id": 5,
+            "name": "Jeff Smith",
+            "username": "jeff.smith",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-07T16:27:13.188Z",
+        "updated_at": "2018-11-07T16:27:13.188Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    },
+    {
+        "id": 10409,
+        "type": null,
+        "body": "added 1y 1mo 1w 1d 1h 15m of time spent at 2019-02-01",
+        "attachment": null,
+        "author": {
+            "id": 5,
+            "name": "Jeff Smith",
+            "username": "jeff.smith",
+            "state": "active",
+            "avatar_url": "https://gitlab.matrix.msu.edu/uploads/-/system/user/avatar/54/avatar.png",
+            "web_url": "https://gitlab.matrix.msu.edu/amanuel.goshu"
+        },
+        "created_at": "2018-11-07T16:27:13.188Z",
+        "updated_at": "2018-11-07T16:27:13.188Z",
+        "system": true,
+        "noteable_id": 1008,
+        "noteable_type": "Issue",
+        "resolvable": false,
+        "noteable_iid": 1
+    }
+
+]
