@@ -3,10 +3,8 @@ import requests
 import config
 import parser as myparser
 import jsonresponse as myjson
-import math
+from operator import itemgetter
 
-#################################################################
-# endpoints for GitLab API V.4
 # issues url 
 issues_url = "https://gitlab.matrix.msu.edu/api/v4/issues"
 
@@ -14,23 +12,7 @@ issues_url = "https://gitlab.matrix.msu.edu/api/v4/issues"
 proj_url = "https://gitlab.matrix.msu.edu/api/v4/projects"
 
 # users url 
-users_url = "https://gitlab.matrix.msu.edu/api/v4/users"
-
-#################################################################
-# CONSTANTS used for calculations of total time spent
-
-YEARSECONDS = int(7.513 * math.pow(10, 6))  # according to the U.S. OPM
-MONTHSECONDS = 576000   # number of work seconds in a month (40hr * 4 weeks)
-WEEKSECONDS = 144000    # number of work seconds in a week (40hr)
-DAYSECONDS = 28800      # number of work seconds in a day (8hr)
-HOURSECONDS = 3600      # number of seconds in an hr
-MINSECONDS = 60         # number of seconds in a min
-MAXOBJECTSPERPAGE = 100 # Gitlab Pagination max
-#################################################################
-
-# params to inject while sending a GET request
-payload = {'per_page': MAXOBJECTSPERPAGE}
-#################################################################
+users_url = "https://gitlab.matrix.msu.edu/api/v4/users?per_page=100"
 
 def pullProjects():
     """
@@ -54,6 +36,8 @@ def projIssue(projID, issueIID):
     builtEndPoint = proj_url + '/' + projID + '/issues/' + issueIID
     output = requests.get(builtEndPoint, headers={ "PRIVATE-TOKEN": config.theToken })
     issueResponse = output.json()
+
+    # issueResponse = myjson.json
     
     return issueResponse
 
@@ -105,36 +89,31 @@ def pullNotes(projID, issueIID):
     # Given a single ticket, using the gitlab API, read the ticket and all comments on it
 
     # build the URL endpoint and extract notes in the issue
-    builtEndPoint = proj_url + '/' + projID + '/issues/' + issueIID + '/notes'
-    output = requests.get(builtEndPoint, headers={"PRIVATE-TOKEN": config.theToken} , params = payload)
-    
-    ###########################################################################
-    # TODO 
-    # pre-process the response output 
-    # (issues that have more than 20 per_page / more than a page)
-    # get the headers, collect the info X-Total, X-Total-Pages, X-Page, X-Prev-Page, Link
-    # 
-    # headerDict = output.headers
-    # totalItems = headerDict['X-Total']
-    # totalPages = headerDict['X-Total-Pages']
-    # thisPage = headerDict['X-Page']
-    # prevPage = headerDict['X-Prev-Page']
-    # nextPage = headerDict['X-Next-Page']      # this returns '' if last page
-    # linkContainer = headerDict['Link']        # manipulate this to build endpoints
-    ############################################################################
+    # builtEndPoint = proj_url + '/' + projID + '/issues/' + issueIID + '/notes'
+    # output = requests.get(builtEndPoint, headers={"PRIVATE-TOKEN": config.theToken})
+    # noteJsonRes = output.json()  
 
-    noteJsonRes = output.json()  
+    noteJsonRes = myjson.jsonS
 
-    ####################################################
-    # Load the response from external JSON File
-    # uncomment the following line and change the jsonresponse.py file 
-    #
-    # noteJsonRes = myjson.jsonS
-    ####################################################
-    
     concatNote = ""
 
+    # Grab all unique Users who contributed to this issue
+    contributorsDict = {}
+    tmp_lst = []
+
     finalDict = {} # has unique usernames as key and {+veTime : x, -veTime: y} as value
+    
+    for eachNote in noteJsonRes:
+        tmp_lst.append(eachNote['author']['username'])
+
+    keys = range(len(tmp_lst))
+    values = tmp_lst
+    
+    for i in keys:
+        contributorsDict[i] = values[i]
+    
+    # Build set of unique contributers for this issue
+    uniqueContributers = set(contributorsDict.values())
     
     # Time info holders
     postiveTime = 0
@@ -154,97 +133,67 @@ def pullNotes(projID, issueIID):
             # regex to extract
             result = myparser.parser.parse(concatNote)
         else:
-            result = ['', '', '', '', '', '', '', '', '', '']
+            result = ['added', '', '', '', '', '', '']
         
         # make the calculation for every user - per date
         if (result[0] == 'added'):
             # extract the time info from the result list
-            year = result[1]
-            month = result[2]
-            week = result[3]
-            day = result[4]
-            hr = result[5]
-            minutes = result[6]
-            
+            day = result[1]
+            hr = result[2]
+            minutes = result[3]
+
             try:
-                # strip the trailing y/mo/h/m info
-                year = int(year[:-1]) or 0
-            except(ValueError):
-                year = 0
-            try:
-                month = int(month[-2:]) or 0
-            except(ValueError):
-                month = 0
-            try:
-                week = int(week[:-1]) or 0
-            except(ValueError):
-                week = 0
-            try:
-                day = int(day[:-1]) or 0
-            except(ValueError):
-                day = 0
-            try:
-                hr = int(hr[:-1]) or 0
-            except(ValueError):
-                hr =  0
-            try:
-                minutes = int(minutes[:-1]) or 0
-            except(ValueError):
-                minutes = 0
-            
-            #calcuate
-            postiveTime = round((postiveTime + (year*YEARSECONDS) + (month*MONTHSECONDS) + (week*WEEKSECONDS) + (day*DAYSECONDS) + (hr*HOURSECONDS) + (minutes*MINSECONDS))/3600, 2)
+
+                # strip the trailing h/m
+                day = day[:-1] or 0
+                hr = hr[:-1] or 0
+                minutes = minutes[:-1] or 0
+
+                postiveTime = postiveTime + \
+                    round(((int(day)*8*3600) + (int(hr) * 3600) + (int(minutes) * 60))/(3600), 3)
+
+            except:
+                postiveTime = postiveTime + \
+                    round(((int(day)*8*3600) + (int(hr) * 3600) +
+                     (int(minutes) * 60))/(3600), 3)
+
+                #print('something wrong has happened while adding/extracting time information.')
 
         if(result[0] == 'subtracted'):
+
             # extract the time info from the result list
-            year = result[1]
-            month = result[2]
-            week = result[3]
-            day = result[4]
-            hr = result[5]
-            minutes = result[6]
+            #day = result[1]
+            hr = result[2]
+            minutes = result[3]
 
-            # strip the trailing y/mo/h/m info
             try:
-                # strip the trailing y/mo/h/m info
-                year = int(year[:-1]) or 0
-            except(ValueError):
-                year = 0
-            try:
-                month = int(month[-2:]) or 0
-            except(ValueError):
-                month = 0
-            try:
-                week = int(week[:-1]) or 0
-            except(ValueError):
-                week = 0
-            try:
-                day = int(day[:-1]) or 0
-            except(ValueError):
-                day = 0
-            try:
-                hr = int(hr[:-1]) or 0
-            except(ValueError):
-                hr = 0
-            try:
-                minutes = int(minutes[:-1]) or 0
-            except(ValueError):
-                minutes = 0
+                # strip the trailing h/m
+                #day = day[:-1]
+                hr = hr[:-1] or 0
+                minutes = minutes[:-1] or 0
 
-            #calcuate
-            negTime = round((negTime +
-                                 (year*YEARSECONDS) + (month*MONTHSECONDS) + (week*WEEKSECONDS) +
-                                 (day*DAYSECONDS) + (hr*HOURSECONDS) + (minutes*MINSECONDS))/3600, 2)
-        # else: 
-        #     pass
-        
-        dateTimeLogged = result[8]
-        
-        finalDict.setdefault(dateTimeLogged, []).append(
-            {'user': noteAuthor, "positivetime": postiveTime, "negativetime": negTime})
+                #calcuate
+                negTime = negTime + \
+                    round(((int(day)*8*3600) + (int(hr) * 3600) +
+                     (int(minutes) * 60))/(3600), 3)
+
+            except:
+                negTime = negTime + \
+                    round(((int(day)*8*3600) + (int(hr) * 3600) +
+                     (int(minutes) * 60))/(3600), 3)
+
+                #print('something has happened while subtracting/extracting time information.')
+
+            # # Total Sum
+            # totalTime = postiveTime - negTime
+            
+        dateTimeLogged = result[5] or ''
+       
+        finalDict.setdefault(noteAuthor, []).append({dateTimeLogged: { "positivetime": postiveTime, "negativetime": negTime}})
         
         postiveTime, negTime = 0,0 # Reset counters
 
+            
     return finalDict
 
 
@@ -260,56 +209,46 @@ def getSingleIssueNote(projID, issueIID, noteID):
 
     return noteJsonRes
 
-def calculateTimeSpentPerIssue(result):
-    """
-    Calculate the time spent for a single issue for every user 
-    produce a 2D output of date and the corresponding time spent information for each user
-    on that date
-    """
-
-    # further process the result
-    timeSpentDictByDate = {}
-
-    # final formatting should present dict of {date: {user: [positiveTimeLogged, negativeTimeLogged]}}
-    for eachDate, eachTimeLst in result.items():
-        tmpDict = {}  # intermediate dict
-        for eachLstItem in eachTimeLst:
-            if (eachLstItem['user'] not in tmpDict):
-                timeDict = {}
-                currUserToDict = eachLstItem['user']
-                # if the time info is not there, get the info
-                timeDict['totPosTime'] = eachLstItem['positivetime']
-                timeDict['totNegTime'] = eachLstItem['negativetime']
-
-                # push the dict conataining time info into a temp dict with user as key
-                tmpDict[currUserToDict] = timeDict
-
-            elif(eachLstItem['user'] in tmpDict):
-                # user to update
-                updateUserInDict = eachLstItem['user']
-                # if there is an entry for that user, sum the time info as value
-                tmpDict[updateUserInDict]['totPosTime'] += eachLstItem['positivetime']
-                tmpDict[updateUserInDict]['totNegTime'] += eachLstItem['negativetime']
-
-        timeSpentDictByDate.setdefault(eachDate, []).append(tmpDict)
-
-    # maybe sort the final array based on dates before returning it 
-    return timeSpentDictByDate
-    
-
 def main():
     """
     The main function
     """
     
-    # get list of notes and a few other relevant info
+    # get final data structure for user
     result = pullNotes("231","3" )
     
-    # invoke the function that aggregates time spent info for users summarized to the day
-    timeSpentInfo = calculateTimeSpentPerIssue(result)
+    #print(result)
+    
+    # final formatting should present dict of {user: {date: [positiveTimeLogged, negativeTimeLogged]}}
+    # for each date sum the the total negative and positive time for every user
 
-    print('###################################################################')
-    print(timeSpentInfo)
-    print('###################################################################')
+    dateDict = {}
 
+    for mainKey, mainValue in result.items():
+        for eachValue in mainValue:
+            for eachSubKey, Subvalue in eachValue.items():
+                dateDict.setdefault(eachSubKey, []).append({'user' : mainKey, 'data' : eachValue[eachSubKey]})
+    
+    # summarize the postime and negtime for each user for a specific date
+    tmpKey = ''
+    calcDict = {}
+    tmpUser = ''
+    for key, value in dateDict.items():
+        if tmpKey != key:
+            tmpKey = key
+            totTimePos =0
+            totNegTime =0
+            lst = []
+            for eachItem in value:
+                if( eachItem['user'] != tmpUser ):
+                    # add positives , negatives
+                    totTimePos += eachItem['data']['positivetime']
+                    totNegTime += eachItem['data']['negativetime']
+                    tmpUser = eachItem['user']
+                    lst.append([tmpUser, totTimePos, totNegTime])
+                    calcDict.setdefault(tmpKey, []).append({'info' : lst})
+        
+        tmpKey = ''
+
+    print(calcDict)
 main()
