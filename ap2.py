@@ -193,39 +193,40 @@ def pullNotes(projID, issueIID):
 
 def getTimeInfo(result):
     # extract the time info from the result list
-            year = result[1]
-            month = result[2]
-            week = result[3]
-            day = result[4]
-            hr = result[5]
-            minutes = result[6]
+    year = result[1]
+    month = result[2]
+    week = result[3]
+    day = result[4]
+    hr = result[5]
+    minutes = result[6]
 
-            # strip the trailing y/mo/h/m info
-            try:
-                # strip the trailing y/mo/h/m info
-                year = int(year[:-1]) or 0
-            except(ValueError):
-                year = 0
-            try:
-                month = int(month[-2:]) or 0
-            except(ValueError):
-                month = 0
-            try:
-                week = int(week[:-1]) or 0
-            except(ValueError):
-                week = 0
-            try:
-                day = int(day[:-1]) or 0
-            except(ValueError):
-                day = 0
-            try:
-                hr = int(hr[:-1]) or 0
-            except(ValueError):
-                hr = 0
-            try:
-                minutes = int(minutes[:-1]) or 0
-            except(ValueError):
-                minutes = 0
+    # strip the trailing y/mo/h/m info
+    try:
+        # strip the trailing y/mo/h/m info
+        year = int(year[:-1]) or 0
+    except(ValueError):
+        year = 0
+    try:
+        month = int(month[-2:]) or 0
+    except(ValueError):
+        month = 0
+    try:
+        week = int(week[:-1]) or 0
+    except(ValueError):
+        week = 0
+    try:
+        day = int(day[:-1]) or 0
+    except(ValueError):
+        day = 0
+    try:
+        hr = int(hr[:-1]) or 0
+    except(ValueError):
+        hr = 0
+    try:
+        minutes = int(minutes[:-1]) or 0
+    except(ValueError):
+        minutes = 0
+    
     return  year, month, week, day, hr, minutes
 
 def getSingleIssueNote(projID, issueIID, noteID):
