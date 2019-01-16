@@ -49,7 +49,7 @@ HOURCLOCK = r'(?P<hours>\d+):(?P<mins>\d{2}):(?P<secs>\d{2}(?:\.\d+)?)'
 DAYCLOCK = (r'(?P<days>\d+):(?P<hours>\d{2}):'
             r'(?P<mins>\d{2}):(?P<secs>\d{2}(?:\.\d+)?)')
 
-JUNK = r'(?P<junk>(\w+\s*)+)'
+# JUNK = r'(?P<junk>(\w+\s*)+)?'
 
 def OPT(x): return r'(?:{x})?'.format(x=x, SEPARATORS=SEPARATORS)
 
@@ -89,12 +89,12 @@ COMPILED_TIMEFORMATS = [re.compile(r'\s*' + timefmt + r'\s*$', re.I)
 
 # adapted to work week (8hr/day, 40hr/week)
 MULTIPLIERS = dict([
-    ('years',   60 * 60 * 8 * 5 * 4 * 12),
-    ('months',  60 * 60 * 8 * 5 * 4),
-    ('weeks',   60 * 60 * 8 * 5),
-    ('days',    60 * 60 * 8),
-    ('hours',   60 * 60),
-    ('mins',    60),
+    ('years',   60 * 60 * 8 * 5 * 4 * 12 * 1),
+    ('months',  60 * 60 * 8 * 5 * 4 * 1),
+    ('weeks',   60 * 60 * 8 * 5 * 1),
+    ('days',    60 * 60 * 8 * 1),
+    ('hours',   60 * 60 * 1),
+    ('mins',    60 * 1),
     ('secs',    1)
 ])
 
@@ -196,7 +196,7 @@ def timeparse(sval, granularity='seconds'):
 #         '([a-z]{1,}.[a-z]{1,})?').desc('User in [a-z]{1,}.[a-z]{1,} format')
 
 
-def testMain():
-    print(timeparse('subtracted 1y 5mo 1w 3d 10h 7m 2s of'))
+# def testMain():
+#     print(timeparse('subtracted1y5mo1w3d10h7m2s '))
 
 # testMain()
