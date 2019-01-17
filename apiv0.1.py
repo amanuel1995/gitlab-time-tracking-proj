@@ -2,11 +2,15 @@
 import requests
 import config
 import parser as myparser
-import jsonresponse as myjson
 import math
 import pytimeparse
-# import iso8601
 import dateutil.parser
+import json
+
+###### LOAD RESPONSE FROM EXTERNAL JSON FILE ####################
+externalJSON = open('testResponse.json').read()
+extJSONResponse = json.loads(externalJSON)
+#################################################################
 
 #################################################################
 # endpoints for GitLab API V.4
@@ -123,19 +127,19 @@ def pullNotes(projID, issueIID):
     # Given a single ticket, using the gitlab API, read the ticket and all comments on it
 
     # build the URL endpoint and extract notes in the issue
-    builtEndPoint = proj_url + '/' + projID + '/issues/' + issueIID + '/notes'
-    output = requests.get(builtEndPoint, headers={
-                          "PRIVATE-TOKEN": config.theToken}, params=payload)
     
-    noteJsonRes = output.json()
+    # builtEndPoint = proj_url + '/' + projID + '/issues/' + issueIID + '/notes'
+    # output = requests.get(builtEndPoint, headers={
+    #                       "PRIVATE-TOKEN": config.theToken}, params=payload)
+    
+    # noteJsonRes = output.json()
 
-
-    ####################################################
+    ########### RESPONSE from EXTERNAL JSON File #####################
     # Load the response from external JSON File
     # uncomment the following line and change the jsonresponse.py file
-    #
-    # noteJsonRes = myjson.jsonS
-    ####################################################
+    
+    noteJsonRes = extJSONResponse
+    ##################################################################
     
     concatNote = ""
 
@@ -238,6 +242,63 @@ def calculateTimeSpentPerIssue(result):
     return timeSpentDictByDate
 
 
+def ConvertToHumanTime(dict1):
+    '''
+    Take the dictionary, traverse it and convert the total seconds info to
+    human readable (years, months, weeks,days,hours,mins and seconds)
+    '''
+    humanTimeDictPerDate = {}
+
+    for date, userTimes in dict1.items():
+        tmpDict = {}
+        for eachUserDict in userTimes:
+            for eachUserKey, eachtimeVal in eachUserDict.items():
+                currUser = eachUserKey
+                # grab the total seconds duration
+                totPosTime = eachtimeVal['totPosTime']
+                totNegTime = eachtimeVal['totNegTime']
+
+                # convert the seconds to human time (weeks,days,hours,mins and seconds)
+                totPosHumanTime = human_time_delta(totPosTime)
+                totNegHumanTime = human_time_delta(totNegTime)
+
+                tmpDict[currUser] = {
+                    'totPosHumanTime': totPosHumanTime, 'totNegHumanTime': totNegHumanTime}
+
+        humanTimeDictPerDate.setdefault(date, []).append(tmpDict)
+
+    return humanTimeDictPerDate
+
+
+def human_time_delta(seconds):
+    sign_string = '-' if seconds < 0 else ''
+    seconds = abs(int(seconds))
+
+    years, seconds = divmod(seconds, 7513200)
+    months, seconds = divmod(seconds, 576000)
+    weeks, seconds = divmod(seconds, 144000)
+
+    days, seconds = divmod(seconds, 28800)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+
+    if years > 0:
+        return '%s%dy %dmo %dw %dd %dh %dm %ds' % (sign_string, years, months, weeks, days, hours, minutes, seconds)
+    if months > 0:
+        return '%s%dmo %dw %dd %dh %dm %ds' % (sign_string, months, weeks, days, hours, minutes, seconds)
+    if weeks > 0:
+        return '%s%dw %dd %dh %dm %ds' % (sign_string, weeks, days, hours, minutes, seconds)
+
+    if days > 0:
+        return '%s%dd %dh %dm %ds' % (sign_string, days, hours, minutes, seconds)
+    elif hours > 0:
+        return '%s%dh %dm %ds' % (sign_string, hours, minutes, seconds)
+    elif minutes > 0:
+        return '%s%dm %ds' % (sign_string, minutes, seconds)
+    else:
+        return '%s%ds' % (sign_string, seconds)
+
+
 def main():
     """
     The main function
@@ -248,10 +309,11 @@ def main():
 
     # invoke the function that aggregates time spent info for users summarized to the day
     timeSpentInfo = calculateTimeSpentPerIssue(result)
-
+    
+    # invoke the function gives human time for each date
+    humanTimeDictPerDate = ConvertToHumanTime(timeSpentInfo)
     print('###################################################################')
-    print(timeSpentInfo)
+    print(humanTimeDictPerDate)
     print('###################################################################')
-
 
 main()
