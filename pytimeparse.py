@@ -42,14 +42,12 @@ DAYS = r'(?P<days>[\d.]+)\s*(?:d|dys?|days?)'
 HOURS = r'(?P<hours>[\d.]+)\s*(?:h|hrs?|hours?)'
 MINS = r'(?P<mins>[\d.]+)\s*(?:m|(mins?)|(minutes?))'
 SECS = r'(?P<secs>[\d.]+)\s*(?:s|secs?|seconds?)'
-SEPARATORS = r'[,/]'
+SEPARATORS = r'[\s]' # right?
 SECCLOCK = r':(?P<secs>\d{2}(?:\.\d+)?)'
 MINCLOCK = r'(?P<mins>\d{1,2}):(?P<secs>\d{2}(?:\.\d+)?)'
 HOURCLOCK = r'(?P<hours>\d+):(?P<mins>\d{2}):(?P<secs>\d{2}(?:\.\d+)?)'
 DAYCLOCK = (r'(?P<days>\d+):(?P<hours>\d{2}):'
             r'(?P<mins>\d{2}):(?P<secs>\d{2}(?:\.\d+)?)')
-
-# JUNK = r'(?P<junk>(\w+\s*)+)?'
 
 def OPT(x): return r'(?:{x})?'.format(x=x, SEPARATORS=SEPARATORS)
 
@@ -87,45 +85,19 @@ COMPILED_SIGN = re.compile(r'\s*' + SIGN + r'\s*(?P<unsigned>.*)$')
 COMPILED_TIMEFORMATS = [re.compile(r'\s*' + timefmt + r'\s*$', re.I)
                         for timefmt in TIMEFORMATS]
 
-# adapted to work week (8hr/day, 40hr/week)
+# adapted to work week 
+# (8hr/day, 40hr/week, 5days/week, 4 weeks/month and 2,087 hrs/year)
+# according to the U.S. OPM average year is 2,087 hrs of work
+
 MULTIPLIERS = dict([
-    ('years',   60 * 60 * 8 * 5 * 4 * 12 * 1),
-    ('months',  60 * 60 * 8 * 5 * 4 * 1),
-    ('weeks',   60 * 60 * 8 * 5 * 1),
-    ('days',    60 * 60 * 8 * 1),
-    ('hours',   60 * 60 * 1),
-    ('mins',    60 * 1),
+    ('years',   3600 * 2087),
+    ('months',  3600 * 160),
+    ('weeks',   3600 * 40),
+    ('days',    3600 * 8),
+    ('hours',   3600),
+    ('mins',    60),
     ('secs',    1)
 ])
-
-''' OPTIONAL FOR THE PURPOSE OF THIS PROJECT '''
-
-#################################################################
-def _interpret_as_minutes(sval, mdict):
-   """
-   Times like "1:22" are ambiguous; do they represent minutes and seconds
-   or hours and minutes?  By default, timeparse assumes the latter.  Call
-   this function after parsing out a dictionary to change that assumption.
-   
-   >>> import pprint
-   >>> pprint.pprint(_interpret_as_minutes('1:24', {'secs': '24', 'mins': '1'}))
-   {'hours': '1', 'mins': '24'}
-   """
-   if (sval.count(':') == 1
-       and '.' not in sval
-      and (('hours' not in mdict) or (mdict['hours'] is None))
-       and (('days' not in mdict) or (mdict['days'] is None))
-       and (('weeks' not in mdict) or (mdict['weeks'] is None))
-       and (('months' not in mdict) or (mdict['months'] is None))
-               and (('years' not in mdict) or (mdict['years'] is None))
-       ):
-       mdict['hours'] = mdict['mins']
-       mdict['mins'] = mdict['secs']
-       mdict.pop('secs')
-       pass
-   return mdict
-#################################################################
-
 
 def timeparse(sval, granularity='seconds'):
     '''
@@ -144,23 +116,12 @@ def timeparse(sval, granularity='seconds'):
     # 84
     # >>> timeparse('1m24s')
     # 84
-    # >>> timeparse('1.2 minutes')
-    # 72
-    # >>> timeparse('1.2 seconds')
-    # 1.2
     # Time expressions can be signed.
     # >>> timeparse('- 1 minute')
     # -60
     # >>> timeparse('+ 1 minute')
     # 60
-    
-    # If granularity is specified as ``minutes``, then ambiguous digits following
-    # a colon will be interpreted as minutes; otherwise they are considered seconds.
-    
-    # >>> timeparse('1:30')
-    # 90
-    # >>> timeparse('1:30', granularity='minutes')
-    # 5400
+
     match = COMPILED_SIGN.match(sval)
     sign = -1 if match.groupdict()['sign'] == 'subtracted' else 1
     sval = match.groupdict()['unsigned']
@@ -168,8 +129,6 @@ def timeparse(sval, granularity='seconds'):
         match = timefmt.match(sval)
         if match and match.group(0).strip():
             mdict = match.groupdict()
-            if granularity == 'minutes':
-                mdict = _interpret_as_minutes(sval, mdict)
             # if all of the fields are integer numbers
             if all(v.isdigit() for v in list(mdict.values()) if v):
                 return sign * sum([MULTIPLIERS[k] * int(v, 10) for (k, v) in
@@ -187,16 +146,3 @@ def timeparse(sval, granularity='seconds'):
                 # SECS is a float, we will return a float
                 return sign * sum([MULTIPLIERS[k] * float(v) for (k, v) in
                                    list(mdict.items()) if v is not None])
-
-# def stripJunk(sval):
-    
-#     time_spentstr = regex('(([a-z]+){4})?').desc('of time spent at ')
-#     date = regex('([0-9]{4}-[0-9]{2}-[0-9]{2})?').desc('Date in yyyy-mm-dd format')
-#     user = regex(
-#         '([a-z]{1,}.[a-z]{1,})?').desc('User in [a-z]{1,}.[a-z]{1,} format')
-
-
-# def testMain():
-#     print(timeparse('subtracted1y5mo1w3d10h7m2s '))
-
-# testMain()
