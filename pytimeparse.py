@@ -34,15 +34,15 @@ from parsy import string, regex, seq
 
 import re
 
-SIGN = r'(?P<sign>(added|subtracted)\s*?)'
-YEARS      = r'(?P<years>\d+)\s*(?:y?|yrs?.?|years?)'
-MONTHS     = r'(?P<months>\d+)\s*(?:mo?.?|mths?.?|months?)'
+SIGN = r'(?P<sign>(added|subtracted)?\s*?)'
+YEARS      = r'(?P<years>\d+)\s*(?:y|yrs?.?|years?)'
+MONTHS     = r'(?P<months>\d+)\s*(?:mo|months?)'
 WEEKS = r'(?P<weeks>[\d.]+)\s*(?:w|wks?|weeks?)'
 DAYS = r'(?P<days>[\d.]+)\s*(?:d|dys?|days?)'
 HOURS = r'(?P<hours>[\d.]+)\s*(?:h|hrs?|hours?)'
-MINS = r'(?P<mins>[\d.]+)\s*(?:m|(mins?)|(minutes?))'
+MINS = r'(?P<mins>[\d.]+)\s*(?:m|mins?|minutes?)'
 SECS = r'(?P<secs>[\d.]+)\s*(?:s|secs?|seconds?)'
-SEPARATORS = r'[\s]' # right?
+SEPARATORS = r'[:,\s]'
 SECCLOCK = r':(?P<secs>\d{2}(?:\.\d+)?)'
 MINCLOCK = r'(?P<mins>\d{1,2}):(?P<secs>\d{2}(?:\.\d+)?)'
 HOURCLOCK = r'(?P<hours>\d+):(?P<mins>\d{2}):(?P<secs>\d{2}(?:\.\d+)?)'
@@ -65,6 +65,9 @@ TIMEFORMATS = [
         HOURS=OPTSEP(HOURS),
         MINS=OPTSEP(MINS),
         SECS=OPT(SECS)),
+    r'{MINS}'.format(
+        MINS=OPTSEP(MINS)
+    ),
     r'{MINCLOCK}'.format(
         MINCLOCK=MINCLOCK),
     r'{WEEKS}\s*{DAYS}\s*{HOURCLOCK}'.format(
@@ -108,18 +111,16 @@ def timeparse(sval, granularity='seconds'):
     '''
     # Arguments:
     # - `sval`: the string value to parse
-    # >>> timeparse('1:24')
+    # >>> timeparse('1h 24m')
     # 84
-    # >>> timeparse(':22')
-    # 22
     # >>> timeparse('1 minute, 24 secs')
     # 84
     # >>> timeparse('1m24s')
     # 84
     # Time expressions can be signed.
-    # >>> timeparse('- 1 minute')
+    # >>> timeparse('- 1m')
     # -60
-    # >>> timeparse('+ 1 minute')
+    # >>> timeparse('+1 minute')
     # 60
 
     match = COMPILED_SIGN.match(sval)
@@ -146,3 +147,52 @@ def timeparse(sval, granularity='seconds'):
                 # SECS is a float, we will return a float
                 return sign * sum([MULTIPLIERS[k] * float(v) for (k, v) in
                                    list(mdict.items()) if v is not None])
+
+# Test the parser
+
+############################################################################
+# print(timeparse('2s'))          # 2
+
+# print(timeparse('1m'))          # 60
+# print(timeparse('2m 40s'))      # 160
+
+# print(timeparse('1h'))          # 3600
+# print(timeparse('2h 20s'))      # 7220
+# print(timeparse('2h 2m 30s'))   # 7350
+
+# print(timeparse('1d'))          # 28800
+# print(timeparse('10d 2h'))      # 295200
+# print(timeparse('1d 25m'))      # 30300
+# print(timeparse('2d 20s'))      # 57620
+# print(timeparse('1d 50m 5s'))   # 31805
+# print(timeparse('1d 30h 20m'))  # 138000  
+
+# print(timeparse('1w'))          # 144000
+# print(timeparse('2w 1d'))       # 316800
+# print(timeparse('9w 2d 2h'))    # 1360800
+# print(timeparse('3w 3d 20h 30m 20s'))   # 516620
+
+# print(timeparse('1mo'))         # 576000
+# print(timeparse('10mo 2w'))     # 6048000
+# print(timeparse('1mo 2h'))      # 583200
+# print(timeparse('1mo 5m'))      # 576300
+# print(timeparse('10mo 2w 3d'))  # 6134400
+# print(timeparse('1mo 10w 1h 10m'))  # 2020200
+
+# print(timeparse('1y'))          # 7513200
+# print(timeparse('1y 2mo'))      # 8665200
+# print(timeparse('2y 1mo 2w'))   # 15890400
+# print(timeparse('10y 1mo 2w 5h'))           # 76014000
+# print(timeparse('1y 10mo 2w 25h 15m'))      # 13652100
+# print(timeparse('1y 10mo 2w 25h 15m 30s'))  # 13652130
+
+# test months vs mins
+
+# print(timeparse('1mo'))         # 57600
+# print(timeparse('9mo'))         # 5184000
+# print(timeparse('10mo'))        # 576000
+# print(timeparse('1m'))          # 60
+# print(timeparse('9m'))          # 540
+# print(timeparse('10m'))         # 600
+# print(timeparse('10mins'))      # 600
+############################################################################
