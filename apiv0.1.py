@@ -1,8 +1,6 @@
 #import the important modules
 import requests
 import config
-import parser as myparser
-import math
 import pytimeparse
 import dateutil.parser
 import json
@@ -26,125 +24,68 @@ users_url = "https://gitlab.matrix.msu.edu/api/v4/users"
 #################################################################
 # CONSTANTS used
 MAXOBJECTSPERPAGE = 100  # Gitlab Pagination max
+DEFAULTPERPAGE = 20     # Gitlab default pagination
 #################################################################
 
 # params to inject while sending a GET request
-payload = {'per_page': MAXOBJECTSPERPAGE}
+payload = {'per_page': DEFAULTPERPAGE}
 #################################################################
 
-
-def pullUsers():
+def pull_api_response(endpoint):
     """
-    Pull the users from Gitlab API and return a JSON list 
-    
+    Loop through the pagination and collect the entire response from API endpoint
     """
 
-    responseObject = requests.get(
-        users_url, headers={"PRIVATE-TOKEN": config.theToken}, params=payload)
-    userListJson = responseObject.json()
-    
-    # TODO
-    # loop over the next pages till the list is exhausted
-    # use output.headers dict to extract info neeed to loop
+    data_set = []
 
-    return userListJson
+    r = requests.get(endpoint, headers={"PRIVATE-TOKEN": config.theToken}, params=payload)
 
-def pullProjects():
-    """
-    Pull all the projects from Matrix Gitlab and return a JSON list of projects
-    """
-    responseObject = requests.get(
-        proj_url, headers={"PRIVATE-TOKEN": config.theToken}, params=payload)
-    output = responseObject.json()
+    raw = r.json()
+    for resp in raw:
+        data_set.append(resp)
 
-    # TODO
-    # loop over the next pages till the list is exhausted
-    # use output.headers dict to extract info neeed to loop
+    # handle where the response is only one page
+    if r.links['first']['url'] == r.links['last']['url']:
+        return data_set
+    else:
 
-    return output
+        while r.links['next']['url'] != r.links['last']['url']:
+            r = requests.get(r.links['next']['url'], headers={
+                            "PRIVATE-TOKEN": config.theToken})
+            raw = r.json()
+            for items in raw:
+                data_set.append(items)
 
+        return data_set
 
-def pullOneProjIssues(projID):
-    """
-    Given a single project pull all the issues from Gitlab and 
-    return a JSON list of issues for the project
-    """
-
-    # build the URL endpoint and extract notes in the issue
-    builtEndPoint = proj_url + '/' + projID + '/issues/'
-    responseObject = requests.get(builtEndPoint, headers={
-                                  "PRIVATE-TOKEN": config.theToken}, params = payload)
-    thisprojIssuesList = responseObject.json()
-    
-    ###########################################################################
-    # TODO
-    # pre-process the response output
-    # (results that have more than 20 per_page / more than a page)
-    # get the headers, collect the info X-Total, X-Total-Pages, X-Page, X-Prev-Page, Link
-    #
-    # headerDict = responseObject.headers()
-    # totalItems = headerDict['X-Total']
-    # totalPages = headerDict['X-Total-Pages']
-    # thisPage = headerDict['X-Page']
-    # prevPage = headerDict['X-Prev-Page']
-    # nextPage = headerDict['X-Next-Page']      # this returns '' if last page
-    # linkContainer = headerDict['Link']        # manipulate this to build endpoints
-    ############################################################################
-
-    # AND refactor the code to a separate function to avoid repetition
-    
-    return thisprojIssuesList
-
-def pullOneIssue(projID, issueIID):
-    """
-    Given a project ID, and Issue IID fetch the issue associated with the project
-
-    @param: projID - the ID of the project in the projects list
-    @param: issueID - the ID of the specific issue in the project
-    @return: issueResponse - a single JSON issue from a single project
-    """
-
-    # build the URL endpoint and extract notes in the issue
-    builtEndPoint = proj_url + '/' + projID + '/issues/' + issueIID
-    output = requests.get(builtEndPoint, headers={
-                          "PRIVATE-TOKEN": config.theToken}, params=payload)
-    oneIssue= output.json()
-    
-    # TODO
-    # loop over the next pages till the list is exhausted
-    # use output.headers dict to extract info neeed to loop
-
-    return oneIssue
-
+    return data_set
 
 def pullNotes(projID, issueIID):
     """
-    Get Notes from an issue --> (make this for a specific user)
-    param : theURL the endpoint, (maybe theAuthor author of the note, issueIID)
+    Get all the notes from an issue 
+    param : theURL the endpoint, issueIID
     return: output the JSON response
     """
 
     # Given a single ticket, using the gitlab API, read the ticket and all comments on it
 
     # build the URL endpoint and extract notes in the issue
+    builtEndPoint = proj_url + '/' + projID + '/issues/' + issueIID + '/notes'
     
-    # builtEndPoint = proj_url + '/' + projID + '/issues/' + issueIID + '/notes'
-    # output = requests.get(builtEndPoint, headers={
-    #                       "PRIVATE-TOKEN": config.theToken}, params=payload)
-    
-    # noteJsonRes = output.json()
+    noteJsonRes = pull_api_response(builtEndPoint)
 
     ########### RESPONSE from EXTERNAL JSON File #####################
     # Load the response from external JSON File
     # uncomment the following line and change the jsonresponse.py file
     
-    noteJsonRes = extJSONResponse
+    # noteJsonRes = extJSONResponse
     ##################################################################
     
     concatNote = ""
 
-    finalDict = {}  # has unique usernames as key and {+veTime : x, -veTime: y} as value
-
+    finalDict = {}  
+    # has unique dates as key and list of dicts; usernames as key and {+veTime : x, -veTime: y} as value
+    
     # Time info holders
     postiveTime = 0
     negTime = 0
@@ -155,6 +96,9 @@ def pullNotes(projID, issueIID):
 
         # check if a time spent information is in the note body else skip
         word = 'of time spent at'
+
+        # reset flag in time spent information
+        resetWord = 'removed time spent'
         
         if word in noteBody:  
             # extract username and date
@@ -185,8 +129,10 @@ def pullNotes(projID, issueIID):
 
         postiveTime, negTime = 0, 0  # Reset counters
 
-    return finalDict
+        # elseif we encounter a time spent removed information
+        #  reset all the values to 0 for that author 
 
+    return finalDict
 
 def getSingleIssueNote(projID, issueIID, noteID):
     """
@@ -196,12 +142,10 @@ def getSingleIssueNote(projID, issueIID, noteID):
     #build the URL endpoint and extract notes in the issue
     builtEndPoint = proj_url + '/' + projID + \
         '/issues/' + issueIID + '/notes/' + noteID
-    output = requests.get(builtEndPoint, headers={
-                          "PRIVATE-TOKEN": config.theToken})
-    noteJsonRes = output.json()
+    
+    noteJsonRes = pull_api_response(builtEndPoint)
 
     return noteJsonRes
-
 
 def calculateTimeSpentPerIssue(result):
     """
@@ -241,7 +185,6 @@ def calculateTimeSpentPerIssue(result):
     # maybe sort the final array based on dates before returning it
     return timeSpentDictByDate
 
-
 def ConvertToHumanTime(dict1):
     '''
     Take the dictionary, traverse it and convert the total seconds info to
@@ -269,7 +212,6 @@ def ConvertToHumanTime(dict1):
 
     return humanTimeDictPerDate
 
-
 def human_time_delta(seconds):
     sign_string = '-' if seconds < 0 else ''
     seconds = abs(int(seconds))
@@ -283,21 +225,20 @@ def human_time_delta(seconds):
     minutes, seconds = divmod(seconds, 60)
 
     if years > 0:
-        return '%s%dy %dmo %dw %dd %dh %dm %ds' % (sign_string, years, months, weeks, days, hours, minutes, seconds)
+        return '%s%dy %dmo %dw %dd %dh %00dm %00ds' % (sign_string, years, months, weeks, days, hours, minutes, seconds)
     if months > 0:
-        return '%s%dmo %dw %dd %dh %dm %ds' % (sign_string, months, weeks, days, hours, minutes, seconds)
+        return '%s%dmo %dw %dd %dh %00dm %00ds' % (sign_string, months, weeks, days, hours, minutes, seconds)
     if weeks > 0:
-        return '%s%dw %dd %dh %dm %ds' % (sign_string, weeks, days, hours, minutes, seconds)
+        return '%s%dw %dd %dh %00dm %00ds' % (sign_string, weeks, days, hours, minutes, seconds)
 
     if days > 0:
-        return '%s%dd %dh %dm %ds' % (sign_string, days, hours, minutes, seconds)
+        return '%s%dd %dh %00dm %00ds' % (sign_string, days, hours, minutes, seconds)
     elif hours > 0:
-        return '%s%dh %dm %ds' % (sign_string, hours, minutes, seconds)
+        return '%s%dh %00dm %00ds' % (sign_string, hours, minutes, seconds)
     elif minutes > 0:
-        return '%s%dm %ds' % (sign_string, minutes, seconds)
+        return '%s%00dm %00ds' % (sign_string, minutes, seconds)
     else:
-        return '%s%ds' % (sign_string, seconds)
-
+        return '%s%00ds' % (sign_string, seconds)
 
 def main():
     """
@@ -305,13 +246,14 @@ def main():
     """
 
     # get list of notes and a few other relevant info
-    result = pullNotes("231", "6")
+    result = pullNotes("231", "7")
 
     # invoke the function that aggregates time spent info for users summarized to the day
     timeSpentInfo = calculateTimeSpentPerIssue(result)
     
-    # invoke the function gives human time for each date
+    # invoke the function that converts seconds to human time for each date
     humanTimeDictPerDate = ConvertToHumanTime(timeSpentInfo)
+    
     print('###################################################################')
     print(humanTimeDictPerDate)
     print('###################################################################')
