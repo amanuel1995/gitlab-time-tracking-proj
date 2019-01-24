@@ -74,7 +74,16 @@ def pull_one_proj_issue(projID,issueIID):
 
     return issue_json, total_time_spent, human_total_time_spent
 
-def calc_time_from_notes(projID, issueIID):
+def all_issues_for_proj(projID):
+    '''
+    Pull all the issues within a specific project
+    '''
+    endpoint = proj_url + '/' + projID + '/issues'
+    issues_json = pull_api_response(endpoint)
+
+    return issues_json
+
+def calc_time_from_issue_notes(projID, issueIID):
     """
     Get all the notes from an issue 
     param : theURL the endpoint, issueIID
@@ -166,7 +175,26 @@ def calc_time_from_notes(projID, issueIID):
     
     return final_ouput_dict
 
-def calculateTimeSpentPerIssue(result_dict):
+def calc_time_from_multiple_issues(proj_issues_list):
+    '''
+    Calculate the time from every issue for a given project
+    '''
+    extracted_time_info_list = []
+
+    # loop through each issue in that project
+    for each_item in proj_issues_list:
+        issue_iid = each_item['iid']
+        proj_id = each_item['project_id']
+
+        # call the function to extract time info from each note
+        issue_notes_time_dict = calc_time_from_issue_notes(proj_id, issue_iid)
+        
+        # populate the list
+        extracted_time_info_list.append(issue_notes_time_dict)
+
+    return extracted_time_info_list
+
+def calculate_time_spent_per_issue(result_dict):
     """
     Calculate the time spent for a single issue for every user 
     produce a 2D output of date and the corresponding time spent information for each user
@@ -204,6 +232,20 @@ def calculateTimeSpentPerIssue(result_dict):
     # maybe sort the final array based on dates before returning it
     return time_spent_dict_per_date
 
+def calculate_time_spent_per_proj(result_list):
+    '''
+    Calculate the time spent for a single proj for every user and every issue 
+    produce a 2D output of date and the corresponding time spent information for each user for all proj issues
+    on that date
+    '''
+    all_issues_times = []
+
+    for items in result_list:
+        time_info_collection = calculate_time_spent_per_issue(items)
+        all_issues_times.append(time_info_collection)
+    
+    return all_issues_times
+
 def ConvertToHumanTime(time_dict):
     '''
     Take the dictionary, traverse it and convert the total seconds info to
@@ -232,6 +274,12 @@ def ConvertToHumanTime(time_dict):
     return humantime_dict_per_date
 
 def human_time_delta(seconds):
+    '''
+    convert seconds into human time
+    eg. 3600s = 1h 0m
+    28860 = 1d 0h 1m 0s 
+    144000 = 1w 0d 0h 0m 0s
+    '''
     sign_string = '-' if seconds < 0 else ''
     seconds = abs(int(seconds))
 
@@ -259,7 +307,7 @@ def human_time_delta(seconds):
     else:
         return '%s%00ds' % (sign_string, seconds)
 
-def net_tot_time_spent(timespent_dict):
+def net_tot_time_spent_issue(timespent_dict):
     '''
     calculate all the net time spent by all users in a single issue
     '''
@@ -281,10 +329,10 @@ def main():
     """
 
     # get list of notes and a few other relevant info
-    time_dict = calc_time_from_notes("231", "5")
+    time_dict = calc_time_from_issue_notes("231", "5")
 
     # invoke the function that aggregates time spent info for users summarized to the day
-    time_spent_info_seconds = calculateTimeSpentPerIssue(time_dict)
+    time_spent_info_seconds = calculate_time_spent_per_issue(time_dict)
     
     # invoke the function that converts seconds to human time for each date
     humantime_dict_per_date = ConvertToHumanTime(time_spent_info_seconds)
