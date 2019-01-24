@@ -47,7 +47,7 @@ def pull_api_response(endpoint):
         data_set.append(resp)
 
     # handle where the response is only one page
-    if r.links['first']['url'] == r.links['last']['url']:
+    if r.links == {} or r.links['first']['url'] == r.links['last']['url']:
         return data_set
     else:
         while r.links['next']['url'] != r.links['last']['url']:
@@ -61,7 +61,20 @@ def pull_api_response(endpoint):
 
     return data_set
 
-def pullNotes(projID, issueIID):
+def pull_one_proj_issue(projID,issueIID):
+    '''
+    pull a json object describing a single issue from a specific project
+    '''
+    endpoint = proj_url + '/' + projID + '/issues/' + issueIID
+    issue_json = requests.get(endpoint, headers={"PRIVATE-TOKEN": config.theToken}).json()
+    
+    # extract the total spent time on the issue by all contributors
+    total_time_spent = issue_json['time_stats']['total_time_spent']
+    human_total_time_spent = issue_json['time_stats']['human_total_time_spent']
+
+    return issue_json, total_time_spent, human_total_time_spent
+
+def calc_time_from_notes(projID, issueIID):
     """
     Get all the notes from an issue 
     param : theURL the endpoint, issueIID
@@ -94,19 +107,19 @@ def pullNotes(projID, issueIID):
     # loop through each note object, extract Author and Comment Body
     for each_note in notes_json_res:
         note_body = each_note["body"]
-
-        # check if a time spent information is in the note body else skip
-        word = 'of time spent at'
-
-        # reset flag in time spent information
-        reset_word = 'removed time spent'
+        parent_issue = each_note['noteable_iid']
         
-        if word in note_body:  
+        # check if a time spent information is in the note body else skip
+        time_info = 'of time spent at'
+        # reset flag - reset all the values to 0 for every author; up to this day
+        reset_time_info = 'removed time spent'
+        
+        if time_info in note_body:  
             # extract username and date
             note_author = each_note["author"]["username"]
             date_time_created = each_note['created_at']
             
-            # concatenate the note and strip spaces
+            # concatenate the notebody with username
             concat_notes = (note_body) + ' ' + (note_author)
             
             # preprocess the date
@@ -114,7 +127,7 @@ def pullNotes(projID, issueIID):
             date_time_logged = '%4d-%02d-%02d' % (dt.year, dt.month, dt.day)
 
             # extract time phrase
-            split_at_indx  = concat_notes.find(word)
+            split_at_indx  = concat_notes.find(time_info)
             time_phrase = concat_notes[:split_at_indx-1]
             
             # parse time phrase using the timeparse module and return number of seconds
@@ -123,32 +136,37 @@ def pullNotes(projID, issueIID):
             if (total_seconds >= 0):
                 pos_time = total_seconds
             else:
-                neg_time = total_seconds
+                neg_time = -(total_seconds)
 
             final_ouput_dict.setdefault(date_time_logged, []).append(
                 {'user': note_author, "positivetime": pos_time, "negativetime": neg_time})
+        
+        elif reset_time_info in note_body:
+            # extract who removed time spent info and the date
+            note_author = each_note["author"]["username"]
+            date_time_created = each_note['created_at']
 
+            # concatenate the notebody with username
+            concat_notes = (note_body) + ' ' + (note_author)
+
+            # preprocess the date
+            dt = dateutil.parser.parse(date_time_created)
+            date_time_logged = '%4d-%02d-%02d' % (dt.year, dt.month, dt.day)
+            
+            final_ouput_dict.setdefault(date_time_logged, []).append(
+                {'user': note_author, "positivetime": 0, "negativetime": 0})
+            
+            # clear_time_spent()
+            print('Time info has been cleared today. \n')
+        
+        else:
+            pass
+        
         pos_time, neg_time = 0, 0  # Reset counters
-
-        # elseif we encounter a time spent removed information
-        #  reset all the values to 0 for that author 
-
+    
     return final_ouput_dict
 
-def getSingleIssueNote(projID, issueIID, noteID):
-    """
-    A function to pull a single note for a project, issue 
-    """
-
-    #build the URL endpoint and extract notes in the issue
-    built_endpoint = proj_url + '/' + projID + \
-        '/issues/' + issueIID + '/notes/' + noteID
-    
-    notes_json_res = pull_api_response(built_endpoint)
-
-    return notes_json_res
-
-def calculateTimeSpentPerIssue(result):
+def calculateTimeSpentPerIssue(result_dict):
     """
     Calculate the time spent for a single issue for every user 
     produce a 2D output of date and the corresponding time spent information for each user
@@ -159,7 +177,7 @@ def calculateTimeSpentPerIssue(result):
     time_spent_dict_per_date = {}
 
     # final formatting should present dict of {date: {user: [positiveTimeLogged, negativeTimeLogged]}}
-    for each_date, each_time_lst in result.items():
+    for each_date, each_time_lst in result_dict.items():
         tmp_dict = {}  # intermediate dict
         for each_lst_item in each_time_lst:
             
@@ -186,14 +204,14 @@ def calculateTimeSpentPerIssue(result):
     # maybe sort the final array based on dates before returning it
     return time_spent_dict_per_date
 
-def ConvertToHumanTime(dict1):
+def ConvertToHumanTime(time_dict):
     '''
     Take the dictionary, traverse it and convert the total seconds info to
     human readable (years, months, weeks,days,hours,mins and seconds)
     '''
-    humantime_dictPerDate = {}
+    humantime_dict_per_date = {}
 
-    for date, user_times in dict1.items():
+    for date, user_times in time_dict.items():
         tmp_dict = {}
         for each_user_in_dict in user_times:
             for each_user_key, eachtimeVal in each_user_in_dict.items():
@@ -209,9 +227,9 @@ def ConvertToHumanTime(dict1):
                 tmp_dict[curr_user] = {
                     'tot_pos_human_time': tot_pos_human_time, 'tot_neg_human_time': tot_neg_human_time}
 
-        humantime_dictPerDate.setdefault(date, []).append(tmp_dict)
+        humantime_dict_per_date.setdefault(date, []).append(tmp_dict)
 
-    return humantime_dictPerDate
+    return humantime_dict_per_date
 
 def human_time_delta(seconds):
     sign_string = '-' if seconds < 0 else ''
@@ -241,22 +259,38 @@ def human_time_delta(seconds):
     else:
         return '%s%00ds' % (sign_string, seconds)
 
+def net_tot_time_spent(timespent_dict):
+    '''
+    calculate all the net time spent by all users in a single issue
+    '''
+    grand_tot_pos = 0
+    grand_tot_neg = 0
+    for date, user_times in timespent_dict.items():
+        for items in user_times:
+            for user, times in items.items():
+                grand_tot_pos += times['tot_pos_time']
+                grand_tot_neg += times['tot_neg_time']
+
+    total_issue_time = grand_tot_pos - grand_tot_neg
+
+    return total_issue_time
+
 def main():
     """
     The main function
     """
 
     # get list of notes and a few other relevant info
-    result = pullNotes("239", "1")
+    time_dict = calc_time_from_notes("231", "5")
 
     # invoke the function that aggregates time spent info for users summarized to the day
-    timeSpentInfo = calculateTimeSpentPerIssue(result)
+    time_spent_info_seconds = calculateTimeSpentPerIssue(time_dict)
     
     # invoke the function that converts seconds to human time for each date
-    humantime_dictPerDate = ConvertToHumanTime(timeSpentInfo)
-    
+    humantime_dict_per_date = ConvertToHumanTime(time_spent_info_seconds)
+
     print('###################################################################')
-    print(humantime_dictPerDate)
+    print(humantime_dict_per_date)
     print('###################################################################')
 
 main()
