@@ -93,7 +93,7 @@ def calc_time_from_issue_notes(projID, issueIID):
     # Given a single ticket, using the gitlab API, read the ticket and all comments on it
 
     # build the URL endpoint and extract notes in the issue
-    built_endpoint = proj_url + '/' + projID + '/issues/' + issueIID + '/notes'
+    built_endpoint = proj_url + '/' + projID + '/issues/' + issueIID + '/notes' + '?sort=asc&order_by=updated_at'
     
     notes_json_res = pull_api_response(built_endpoint)
 
@@ -162,11 +162,10 @@ def calc_time_from_issue_notes(projID, issueIID):
             dt = dateutil.parser.parse(date_time_created)
             date_time_logged = '%4d-%02d-%02d' % (dt.year, dt.month, dt.day)
             
-            final_ouput_dict.setdefault(date_time_logged, []).append(
-                {'user': note_author, "positivetime": 0, "negativetime": 0})
+            final_ouput_dict = {date_time_logged : [{'user': note_author, "positivetime": 0, "negativetime": 0}]}
             
             # clear_time_spent()
-            print('Time info has been cleared today. \n')
+            print('Time info has been cleared on this day: ', date_time_logged)
         
         else:
             pass
