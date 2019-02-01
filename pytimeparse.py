@@ -8,8 +8,6 @@ Implements a single function, `timeparse`, which can parse various
 kinds of time expressions.
 '''
 
-from parsy import string, regex, seq
-
 # MIT LICENSE
 #
 # Permission is hereby granted, free of charge, to any person
