@@ -212,7 +212,7 @@ def calc_time_from_multiple_issues(proj_issues_list):
         issue_notes_time_dict = calc_time_from_issue_notes(proj_id, issue_iid)
 
         # aggregate time spent for every issue
-        time_spent_info_seconds = calculate_time_spent_per_issue(
+        time_spent_info_seconds = aggregate_time_spent_per_issue(
             issue_notes_time_dict)
 
         # populate the list
@@ -221,7 +221,7 @@ def calc_time_from_multiple_issues(proj_issues_list):
     return extracted_time_info_list
 
 
-def calculate_time_spent_per_issue(result_dict):
+def aggregate_time_spent_per_issue(result_dict):
     """
     Calculate the time spent for a single issue for every user 
     produce a 2D output of date and the corresponding time spent information for each user
@@ -269,13 +269,13 @@ def calculate_time_spent_per_proj(result_list):
     all_issues_times = []
 
     for items in result_list:
-        time_info_collection = calculate_time_spent_per_issue(items)
+        time_info_collection = aggregate_time_spent_per_issue(items)
         all_issues_times.append(time_info_collection)
     
     return all_issues_times
 
 
-def ConvertToHumanTime(time_dict):
+def convert_to_human_time(time_dict):
     '''
     Take the dictionary, traverse it and convert the total seconds info to
     human readable (years, months, weeks,days,hours,mins and seconds)
@@ -307,14 +307,14 @@ def ConvertToHumanTime(time_dict):
     return humantime_dict_per_date
 
 
-def ConvertToHumanTimeProjIssues(time_lst):
+def convert_to_human_timeProjIssues(time_lst):
     '''
     Take the dictionary, traverse it and convert the total seconds info to
     human readable (years, months, weeks,days,hours,mins and seconds)
     '''
     human_time_lst = []
     for each_obj in time_lst:
-        human_time_lst.append(ConvertToHumanTime(each_obj))
+        human_time_lst.append(convert_to_human_time(each_obj))
 
     return human_time_lst
 
@@ -389,7 +389,7 @@ def main():
 
         # invoke the function that converts seconds to human time
         # for each issue in project per date per user
-        humantime_dict_per_date = ConvertToHumanTimeProjIssues(time_dict)
+        humantime_dict_per_date = convert_to_human_timeProjIssues(time_dict)
     
     elif proj_id_str !='' and issue_id_str !='':
         # user wants a list of time info from a specific issue within a project
@@ -397,10 +397,10 @@ def main():
         time_dict = calc_time_from_issue_notes(proj_id_str, issue_id_str)
 
         # invoke the function that aggregates time spent info for users summarized to the day
-        time_spent_info_seconds = calculate_time_spent_per_issue(time_dict)
+        time_spent_info_seconds = aggregate_time_spent_per_issue(time_dict)
 
         # invoke the function that converts seconds to human time for each date
-        humantime_dict_per_date = ConvertToHumanTime(time_spent_info_seconds)
+        humantime_dict_per_date = convert_to_human_time(time_spent_info_seconds)
     else:
         print('INVALID INPUT.')
 
