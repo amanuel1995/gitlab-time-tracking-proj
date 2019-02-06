@@ -1,3 +1,5 @@
+#!/usr/local/opt/python/bin/
+
 #import the important modules
 import requests
 import config
@@ -31,6 +33,7 @@ DEFAULTPERPAGE = 20     # Gitlab default pagination
 payload = {'per_page': DEFAULTPERPAGE}
 #################################################################
 
+
 def pull_api_response(endpoint):
     """
     Loop through the pages and collect the entire response from API endpoint
@@ -61,6 +64,7 @@ def pull_api_response(endpoint):
 
     return data_set
 
+
 def pull_one_proj_issue(projID,issueIID):
     '''
     pull a json object describing a single issue from a specific project
@@ -74,14 +78,28 @@ def pull_one_proj_issue(projID,issueIID):
 
     return issue_json, total_time_spent, human_total_time_spent
 
+
 def all_issues_for_proj(projID):
     '''
     Pull all the issues within a specific project
     '''
-    endpoint = proj_url + '/' + projID + '/issues'
+    endpoint = proj_url + '/' + projID + '/issues' + '?sort=asc&order_by=updated_at'
     issues_json = pull_api_response(endpoint)
 
     return issues_json
+
+
+def pull_issue_users(projID, issueIID):
+    '''
+    Pull a collectoin of users who contributd to the specific issue in the proj
+    '''
+
+    endpoint =proj_url + projID + '/' +'issues/' + issueIID 
+    j_response = pull_api_response(endpoint)
+    contributers = j_response['assignees']
+
+    return contributers
+
 
 def calc_time_from_issue_notes(projID, issueIID):
     """
@@ -93,22 +111,23 @@ def calc_time_from_issue_notes(projID, issueIID):
     # Given a single ticket, using the gitlab API, read the ticket and all comments on it
 
     # build the URL endpoint and extract notes in the issue
-    built_endpoint = proj_url + '/' + projID + '/issues/' + issueIID + '/notes' + '?sort=asc&order_by=updated_at'
-    
+    built_endpoint = proj_url + '/' + projID + '/issues/' + \
+        issueIID + '/notes' + '?sort=asc&order_by=updated_at'
+
     notes_json_res = pull_api_response(built_endpoint)
 
     ########### RESPONSE from EXTERNAL JSON File #####################
     # Load the response from external JSON File
     # uncomment the following line and change the jsonresponse.py file
-    
+
     # notes_json_res = external_json_response
     ##################################################################
-    
+
     concat_notes = ""
 
-    final_ouput_dict = {}  
+    final_ouput_dict = {}
     # has unique dates as key and list of dicts; usernames as key and {+veTime : x, -veTime: y} as value
-    
+
     # Time info holders
     pos_time = 0
     neg_time = 0
@@ -117,28 +136,28 @@ def calc_time_from_issue_notes(projID, issueIID):
     for each_note in notes_json_res:
         note_body = each_note["body"]
         parent_issue = each_note['noteable_iid']
-        
+
         # check if a time spent information is in the note body else skip
         time_info = 'of time spent at'
         # reset flag - reset all the values to 0 for every author; up to this day
         reset_time_info = 'removed time spent'
-        
-        if time_info in note_body:  
+
+        if time_info in note_body:
             # extract username and date
             note_author = each_note["author"]["username"]
             date_time_created = each_note['created_at']
-            
+
             # concatenate the notebody with username
             concat_notes = (note_body) + ' ' + (note_author)
-            
+
             # preprocess the date
             dt = dateutil.parser.parse(date_time_created)
             date_time_logged = '%4d-%02d-%02d' % (dt.year, dt.month, dt.day)
 
             # extract time phrase
-            split_at_indx  = concat_notes.find(time_info)
+            split_at_indx = concat_notes.find(time_info)
             time_phrase = concat_notes[:split_at_indx-1]
-            
+
             # parse time phrase using the timeparse module and return number of seconds
             total_seconds = pytimeparse.timeparse(time_phrase)
 
@@ -148,9 +167,9 @@ def calc_time_from_issue_notes(projID, issueIID):
                 neg_time = -(total_seconds)
 
             final_ouput_dict.setdefault(date_time_logged, []).append(
-                {'user': note_author, "positivetime": pos_time, "negativetime": neg_time})
-        
-        elif reset_time_info in note_body:
+                {'user': note_author, "positivetime": pos_time, "negativetime": neg_time, "issue#": issueIID, "proj#": projID})
+
+        if reset_time_info in note_body:
             # extract who removed time spent info and the date
             note_author = each_note["author"]["username"]
             date_time_created = each_note['created_at']
@@ -161,18 +180,22 @@ def calc_time_from_issue_notes(projID, issueIID):
             # preprocess the date
             dt = dateutil.parser.parse(date_time_created)
             date_time_logged = '%4d-%02d-%02d' % (dt.year, dt.month, dt.day)
-            
-            final_ouput_dict = {date_time_logged : [{'user': note_author, "positivetime": 0, "negativetime": 0}]}
-            
+
+            # reset the time to zero for everyone ... needs more work
+            final_ouput_dict = {date_time_logged: [
+                {'user': note_author, "positivetime": 0, "negativetime": 0, "issue#": issueIID, "proj#": projID}]}
+
             # clear_time_spent()
-            print('Time info has been cleared on this day: ', date_time_logged)
-        
+            print('Time info has been cleared on this day: ',
+                  date_time_logged, "for issue#", issueIID)
+
         else:
             pass
-        
+
         pos_time, neg_time = 0, 0  # Reset counters
-    
+
     return final_ouput_dict
+
 
 def calc_time_from_multiple_issues(proj_issues_list):
     '''
@@ -182,16 +205,21 @@ def calc_time_from_multiple_issues(proj_issues_list):
 
     # loop through each issue in that project
     for each_item in proj_issues_list:
-        issue_iid = each_item['iid']
-        proj_id = each_item['project_id']
+        issue_iid = str(each_item['iid'])
+        proj_id = str(each_item['project_id'])
 
         # call the function to extract time info from each note
         issue_notes_time_dict = calc_time_from_issue_notes(proj_id, issue_iid)
-        
+
+        # aggregate time spent for every issue
+        time_spent_info_seconds = calculate_time_spent_per_issue(
+            issue_notes_time_dict)
+
         # populate the list
-        extracted_time_info_list.append(issue_notes_time_dict)
+        extracted_time_info_list.append(time_spent_info_seconds)
 
     return extracted_time_info_list
+
 
 def calculate_time_spent_per_issue(result_dict):
     """
@@ -207,7 +235,7 @@ def calculate_time_spent_per_issue(result_dict):
     for each_date, each_time_lst in result_dict.items():
         tmp_dict = {}  # intermediate dict
         for each_lst_item in each_time_lst:
-            
+
             # new user time info for this day
             if (each_lst_item['user'] not in tmp_dict):
                 time_dict = {}
@@ -215,7 +243,8 @@ def calculate_time_spent_per_issue(result_dict):
                 # if the time info is not there, get the info
                 time_dict['tot_pos_time'] = each_lst_item['positivetime']
                 time_dict['tot_neg_time'] = each_lst_item['negativetime']
-
+                time_dict['issue_id'] = each_lst_item['issue#']
+                time_dict["proj_id"] = each_lst_item["proj#"]
                 # push the dict conataining time info into a temp dict with user as key
                 tmp_dict[curr_user_to_dict] = time_dict
             # add existing user info for this day
@@ -225,11 +254,11 @@ def calculate_time_spent_per_issue(result_dict):
                 # if there is an entry for that user, sum the time info as value
                 tmp_dict[updateUserInDict]['tot_pos_time'] += each_lst_item['positivetime']
                 tmp_dict[updateUserInDict]['tot_neg_time'] += each_lst_item['negativetime']
-
         time_spent_dict_per_date.setdefault(each_date, []).append(tmp_dict)
 
     # maybe sort the final array based on dates before returning it
     return time_spent_dict_per_date
+
 
 def calculate_time_spent_per_proj(result_list):
     '''
@@ -244,6 +273,7 @@ def calculate_time_spent_per_proj(result_list):
         all_issues_times.append(time_info_collection)
     
     return all_issues_times
+
 
 def ConvertToHumanTime(time_dict):
     '''
@@ -261,16 +291,33 @@ def ConvertToHumanTime(time_dict):
                 tot_pos_time = eachtimeVal['tot_pos_time']
                 tot_neg_time = eachtimeVal['tot_neg_time']
 
+                # grab the issue# and proj#
+                issue_id = eachtimeVal['issue_id']
+                proj_id = eachtimeVal['proj_id']
+
                 # convert the seconds to human time (weeks,days,hours,mins and seconds)
                 tot_pos_human_time = human_time_delta(tot_pos_time)
                 tot_neg_human_time = human_time_delta(tot_neg_time)
 
                 tmp_dict[curr_user] = {
-                    'tot_pos_human_time': tot_pos_human_time, 'tot_neg_human_time': tot_neg_human_time}
+                    'tot_pos_human_time': tot_pos_human_time, 'tot_neg_human_time': tot_neg_human_time, 'issue_id': issue_id, 'proj_id': proj_id}
 
         humantime_dict_per_date.setdefault(date, []).append(tmp_dict)
 
     return humantime_dict_per_date
+
+
+def ConvertToHumanTimeProjIssues(time_lst):
+    '''
+    Take the dictionary, traverse it and convert the total seconds info to
+    human readable (years, months, weeks,days,hours,mins and seconds)
+    '''
+    human_time_lst = []
+    for each_obj in time_lst:
+        human_time_lst.append(ConvertToHumanTime(each_obj))
+
+    return human_time_lst
+
 
 def human_time_delta(seconds):
     '''
@@ -306,6 +353,7 @@ def human_time_delta(seconds):
     else:
         return '%s%00ds' % (sign_string, seconds)
 
+
 def net_tot_time_spent_issue(timespent_dict):
     '''
     calculate all the net time spent by all users in a single issue
@@ -322,22 +370,44 @@ def net_tot_time_spent_issue(timespent_dict):
 
     return total_issue_time
 
+
 def main():
     """
     The main function
     """
-
-    # get list of notes and a few other relevant info
-    time_dict = calc_time_from_issue_notes("231", "5")
-
-    # invoke the function that aggregates time spent info for users summarized to the day
-    time_spent_info_seconds = calculate_time_spent_per_issue(time_dict)
+    # prompt user for inputs
+    proj_id_str = input('Type the project ID or hit enter to skip: ')
+    issue_id_str = input('Type the Issue ID or hit enter to skip: ')
     
-    # invoke the function that converts seconds to human time for each date
-    humantime_dict_per_date = ConvertToHumanTime(time_spent_info_seconds)
+    print()
+
+    if proj_id_str != '' and issue_id_str =='':
+        # user wants all the time info for all issues within the project
+        # get list of time info from all the notes in all the issues 
+        all_issues_lst = all_issues_for_proj(proj_id_str)
+        time_dict = calc_time_from_multiple_issues(all_issues_lst)
+
+        # invoke the function that converts seconds to human time
+        # for each issue in project per date per user
+        humantime_dict_per_date = ConvertToHumanTimeProjIssues(time_dict)
+    
+    elif proj_id_str !='' and issue_id_str !='':
+        # user wants a list of time info from a specific issue within a project
+        # get list of notes and a few other relevant info
+        time_dict = calc_time_from_issue_notes(proj_id_str, issue_id_str)
+
+        # invoke the function that aggregates time spent info for users summarized to the day
+        time_spent_info_seconds = calculate_time_spent_per_issue(time_dict)
+
+        # invoke the function that converts seconds to human time for each date
+        humantime_dict_per_date = ConvertToHumanTime(time_spent_info_seconds)
+    else:
+        print('INVALID INPUT.')
 
     print('###################################################################')
+    print('Here is the time spent info you requested:-\n')
     print(humantime_dict_per_date)
+    print()
     print('###################################################################')
 
 main()
