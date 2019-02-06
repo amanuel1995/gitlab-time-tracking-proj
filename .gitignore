@@ -1,5 +1,6 @@
 # ignore the auth token file
 config.py
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
@@ -64,3 +65,10 @@ venv.bak/
 [Ss]cripts
 pyvenv.cfg
 pip-selfcheck.json
+
+# custom temporary files
+tmp.py
+tmp.txt
+Matrix_Works_API.md
+pagination.py
+testResponse.json
