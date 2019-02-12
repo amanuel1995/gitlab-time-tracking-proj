@@ -6,6 +6,7 @@ import config
 import pytimeparse
 import dateutil.parser
 import json
+import re
 
 ###### LOAD RESPONSE FROM EXTERNAL JSON FILE ####################
 ext_json_file = open('testResponse.json').read()
@@ -52,18 +53,21 @@ def pull_api_response(endpoint):
     # handle where the response is only one page
     if r.links == {} or r.links['first']['url'] == r.links['last']['url']:
         return data_set
+    # handle pagination where the response is multiple page
     else:
         while r.links['next']['url'] != r.links['last']['url']:
-            r = requests.get(r.links['next']['url'], headers={
-                            "PRIVATE-TOKEN": config.theToken})
+            r = requests.get(r.links['next']['url'], headers={"PRIVATE-TOKEN": config.theToken})
             raw = r.json()
             for items in raw:
                 data_set.append(items)
-
-        return data_set
+    # grab the last page and append it
+    if r.links['next']['url'] == r.links['last']['url']:
+        r = requests.get(r.links['next']['url'], headers={"PRIVATE-TOKEN": config.theToken})
+        raw = r.json()
+        for records in raw:
+            data_set.append(records)
 
     return data_set
-
 
 def pull_one_proj_issue(projID,issueIID):
     '''
@@ -96,19 +100,18 @@ def pull_issue_users(projID, issueIID):
 
     endpoint =proj_url + projID + '/' +'issues/' + issueIID 
     j_response = pull_api_response(endpoint)
-    contributers = j_response['assignees']
+    contributers = j_response[0]['assignees']
 
     return contributers
 
 
 def calc_time_from_issue_notes(projID, issueIID):
     """
+    Given a single ticket, using the gitlab API, read the ticket and all comments on it
     Get all the notes from an issue 
     param : theURL the endpoint, issueIID
     return: output the JSON response
     """
-
-    # Given a single ticket, using the gitlab API, read the ticket and all comments on it
 
     # build the URL endpoint and extract notes in the issue
     built_endpoint = proj_url + '/' + projID + '/issues/' + \
@@ -135,14 +138,13 @@ def calc_time_from_issue_notes(projID, issueIID):
     # loop through each note object, extract Author and Comment Body
     for each_note in notes_json_res:
         note_body = each_note["body"]
-        parent_issue = each_note['noteable_iid']
+        time_substr = 'of time spent'
+        # regex patterns
+        time_info_pattern = r'(^added|subtracted).*of\stime\sspent\sat\s\d+-\d+-\d+$'
+        time_removed_pattern = r'(^removed\stime\sspent$)'
 
         # check if a time spent information is in the note body else skip
-        time_info = 'of time spent at'
-        # reset flag - reset all the values to 0 for every author; up to this day
-        reset_time_info = 'removed time spent'
-
-        if time_info in note_body:
+        if re.match(time_info_pattern, note_body):
             # extract username and date
             note_author = each_note["author"]["username"]
             date_time_created = each_note['created_at']
@@ -155,7 +157,7 @@ def calc_time_from_issue_notes(projID, issueIID):
             date_time_logged = '%4d-%02d-%02d' % (dt.year, dt.month, dt.day)
 
             # extract time phrase
-            split_at_indx = concat_notes.find(time_info)
+            split_at_indx = concat_notes.find(time_substr)
             time_phrase = concat_notes[:split_at_indx-1]
 
             # parse time phrase using the timeparse module and return number of seconds
@@ -168,8 +170,9 @@ def calc_time_from_issue_notes(projID, issueIID):
 
             final_ouput_dict.setdefault(date_time_logged, []).append(
                 {'user': note_author, "positivetime": pos_time, "negativetime": neg_time, "issue#": issueIID, "proj#": projID})
-
-        if reset_time_info in note_body:
+        
+        # reset flag - reset all the values to 0 for every author; up to this day
+        if re.match(time_removed_pattern, note_body):
             # extract who removed time spent info and the date
             note_author = each_note["author"]["username"]
             date_time_created = each_note['created_at']
@@ -354,21 +357,21 @@ def human_time_delta(seconds):
         return '%s%00ds' % (sign_string, seconds)
 
 
-def net_tot_time_spent_issue(timespent_dict):
-    '''
-    calculate all the net time spent by all users in a single issue
-    '''
-    grand_tot_pos = 0
-    grand_tot_neg = 0
-    for date, user_times in timespent_dict.items():
-        for items in user_times:
-            for user, times in items.items():
-                grand_tot_pos += times['tot_pos_time']
-                grand_tot_neg += times['tot_neg_time']
+# def net_tot_time_spent_issue(timespent_dict):
+#     '''
+#     calculate all the net time spent by all users in a single issue
+#     '''
+#     grand_tot_pos = 0
+#     grand_tot_neg = 0
+#     for date, user_times in timespent_dict.items():
+#         for items in user_times:
+#             for user, times in items.items():
+#                 grand_tot_pos += times['tot_pos_time']
+#                 grand_tot_neg += times['tot_neg_time']
 
-    total_issue_time = grand_tot_pos - grand_tot_neg
+#     total_issue_time = grand_tot_pos - grand_tot_neg
 
-    return total_issue_time
+#     return total_issue_time
 
 
 def main():
