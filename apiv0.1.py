@@ -195,8 +195,8 @@ def calc_time_from_issue_notes(projID, issueIID):
             else:
                 neg_time = -(total_seconds)
 
-            final_ouput_dict.setdefault(date_time_logged, []).append(
-                {'user': note_author, "positivetime": pos_time, "negativetime": neg_time, "issue#": issueIID, "proj#": projID})
+            final_ouput_dict.setdefault(note_author, []).append(
+                {'date': date_time_logged, "positivetime": pos_time, "negativetime": neg_time, "issue#": issueIID, "proj#": projID})
         
         # reset flag - reset all the values to 0 for every author; up to this day
         if re.match(time_removed_pattern, note_body):
@@ -212,11 +212,11 @@ def calc_time_from_issue_notes(projID, issueIID):
             date_time_logged = '%4d-%02d-%02d' % (dt.year, dt.month, dt.day)
 
             # reset the time to zero for everyone ... needs more work
-            final_ouput_dict = {date_time_logged: [
-                {'user': note_author, "positivetime": 0, "negativetime": 0, "issue#": issueIID, "proj#": projID}]}
+            final_ouput_dict.setdefault(note_author, []).append(
+                {'date': date_time_logged, "positivetime": pos_time, "negativetime": neg_time, "issue#": issueIID, "proj#": projID})
 
             # clear_time_spent()
-            print('Time info has been cleared on this day: ',
+            print('Time info has been cleared on: ',
                   date_time_logged, "for project# ", projID, "for issue#", issueIID)
 
         else:
@@ -242,18 +242,59 @@ def calc_time_from_multiple_issues(proj_issues_list):
         issue_notes_time_dict = calc_time_from_issue_notes(proj_id, issue_iid)
 
         # aggregate time spent for every issue
-        time_spent_info_seconds = aggregate_time_spent_per_issue(
+        time_spent_info_seconds = aggregate_time_spent_per_issue_per_user(
             issue_notes_time_dict)
-
-        # populate the list
-        extracted_time_info_list.append(time_spent_info_seconds)
+        
+        if not sum_flatten(time_spent_info_seconds):
+            # populate the list, if not empty
+            extracted_time_info_list.append(time_spent_info_seconds)
 
     return extracted_time_info_list
 
 
-def aggregate_time_spent_per_issue(result_dict):
+def aggregate_time_spent_per_issue_per_user(result_dict):
     """
     Calculate the time spent for a single issue for every user 
+    produce a 2D output of date and the corresponding time spent information for each user
+    on that date
+    """
+
+    # further process the result
+    time_spent_dict_per_user = {}
+
+    # final formatting should present dict of {user: {date: [positiveTimeLogged, negativeTimeLogged]}}
+    for each_user, each_time_lst in result_dict.items():
+        tmp_dict = {}  # intermediate dict
+        for each_lst_item in each_time_lst:
+
+            # new user time info for this day
+            if (each_lst_item['date'] not in tmp_dict):
+                time_dict = {}
+                curr_date_to_dict = each_lst_item['date']
+                # if the time info is not there, get the info
+                time_dict['tot_pos_time'] = each_lst_item['positivetime']
+                time_dict['tot_neg_time'] = each_lst_item['negativetime']
+                time_dict['issue_id'] = each_lst_item['issue#']
+                time_dict["proj_id"] = each_lst_item["proj#"]
+                # push the dict conataining time info into a temp dict with user as key
+                tmp_dict[curr_date_to_dict] = time_dict
+            # add existing user info for this day
+            elif(each_lst_item['date'] in tmp_dict):
+                # user to update
+                update_date_in_dict = each_lst_item['date']
+                # if there is an entry for that user, sum the time info as value
+                tmp_dict[update_date_in_dict]['tot_pos_time'] += each_lst_item['positivetime']
+                tmp_dict[update_date_in_dict]['tot_neg_time'] += each_lst_item['negativetime']
+        if not sum_flatten(tmp_dict):
+            time_spent_dict_per_user.setdefault(each_user, []).append(tmp_dict)
+
+    # maybe sort the final array based on dates before returning it
+    return time_spent_dict_per_user
+
+
+def aggregate_time_spent_per_issue(result_dict):
+    """
+    Calculate the time spent for a single issue for every user for the given date
     produce a 2D output of date and the corresponding time spent information for each user
     on that date
     """
@@ -284,7 +325,8 @@ def aggregate_time_spent_per_issue(result_dict):
                 # if there is an entry for that user, sum the time info as value
                 tmp_dict[updateUserInDict]['tot_pos_time'] += each_lst_item['positivetime']
                 tmp_dict[updateUserInDict]['tot_neg_time'] += each_lst_item['negativetime']
-        time_spent_dict_per_date.setdefault(each_date, []).append(tmp_dict)
+        if not sum_flatten(tmp_dict):
+            time_spent_dict_per_date.setdefault(each_date, []).append(tmp_dict)
 
     # maybe sort the final array based on dates before returning it
     return time_spent_dict_per_date
@@ -292,7 +334,7 @@ def aggregate_time_spent_per_issue(result_dict):
 
 def calculate_time_spent_per_proj(result_list):
     '''
-    Calculate the time spent for a single proj for every user and every issue 
+    Calculate the time spent for a single proj for every user and every issue by date
     produce a 2D output of date and the corresponding time spent information for each user for all proj issues
     on that date
     '''
@@ -305,14 +347,29 @@ def calculate_time_spent_per_proj(result_list):
     return all_issues_times
 
 
+def calculate_time_spent_per_proj_per_user(result_list):
+    '''
+    Calculate the time spent for a single proj for every user and every issue by user
+    produce a 2D output of date and the corresponding time spent information for each user for all proj issues
+    on that date
+    '''
+    all_issues_times = []
+
+    for items in result_list:
+        time_info_collection = aggregate_time_spent_per_issue_per_user(items)
+        all_issues_times.append(time_info_collection)
+
+    return all_issues_times
+
+
 def convert_to_human_time(time_dict):
     '''
     Take the dictionary, traverse it and convert the total seconds info to
-    human readable (years, months, weeks,days,hours,mins and seconds)
+    human readable (years, months, weeks,days,hours,mins and seconds) and put it back to a dict
     '''
     humantime_dict_per_date = {}
 
-    for date, user_times in time_dict.items():
+    for key, user_times in time_dict.items():
         tmp_dict = {}
         for each_user_in_dict in user_times:
             for each_user_key, eachtimeVal in each_user_in_dict.items():
@@ -332,15 +389,16 @@ def convert_to_human_time(time_dict):
                 tmp_dict[curr_user] = {
                     'tot_pos_human_time': tot_pos_human_time, 'tot_neg_human_time': tot_neg_human_time, 'issue_id': issue_id, 'proj_id': proj_id}
 
-        humantime_dict_per_date.setdefault(date, []).append(tmp_dict)
+        humantime_dict_per_date.setdefault(key, []).append(tmp_dict)
 
     return humantime_dict_per_date
 
 
-def convert_to_human_timeProjIssues(time_lst):
+def convert_to_human_time_proj_issues(time_lst):
     '''
     Take the dictionary, traverse it and convert the total seconds info to
-    human readable (years, months, weeks,days,hours,mins and seconds)
+    human readable (years, months, weeks,days,hours,mins and seconds) and populate the list 
+    of dictionaries for the project issues
     '''
     human_time_lst = []
     for each_obj in time_lst:
@@ -401,7 +459,67 @@ def human_time_delta(seconds):
 #     return total_issue_time
 
 # flatten nested containers and count them
+
+
+def show_all_times_everything():
+    '''
+    Pulls all projects and issues and computes all time info for all users from
+    the very beginning to now.
+    '''
+    # user wants all the issues in all projects
+    humantime_dict_per_date = []
+    # invoke the function that converts seconds to human time
+    # for each issue in project per date per user
+    resp_time_info = pull_all_project_all_issues()
+
+    # for each project convert the aggregated time info to human time
+    for each_record in resp_time_info:
+        humantime_dict_per_date_for_proj = convert_to_human_time_proj_issues(
+            each_record)
+        if sum_flatten(humantime_dict_per_date_for_proj):
+            humantime_dict_per_date.append(
+                humantime_dict_per_date_for_proj)
+    print('PRINTING ALL TIME INFO ACROSS ALL PROJECTS.')
+
+
 def sum_flatten(stuff): return len(sum(map(list, stuff), []))
+
+
+def display_menu():
+    '''
+    Build and show menu of choices
+    '''
+    menu = {
+        "Show all user times from all projects and issues for all dates": 1,
+        "Show all user times from all projects in date range": 2,
+        "Show all user times from a specific project for all dates": 3,
+        "Show all user times from a specific issue for all dates": 4,
+        "Show all user times from a specific project in date range": 5,
+        "Show all user times from a specific issue in date range": 6,
+        "Show specific user's times from all projects and issues": 7,
+        "Show specific user's times from all projects and issues in date range": 8,
+        "Show specific user's times from a specific project": 9,
+        "Show specific user's times from a specific issue": 10,
+        "Show specific user's times from a specific project in a date range": 11,
+        "Show specific user's times from a specific issue in a date range": 12
+    }
+
+    for key, val in menu.items():
+        print(val, ":", key)
+
+    return menu
+    
+
+def prompt_choice():
+    print("################################################################")
+    menu = display_menu()
+    print("################################################################")
+
+    print()
+    user_choice = int(input("Please make a choice (1-12): "))
+    selected_num = list(menu.keys())[list(menu.values()).index(user_choice)]
+
+    return menu[selected_num]
 
 
 def main():
@@ -422,7 +540,7 @@ def main():
 
         # invoke the function that converts seconds to human time
         # for each issue in project per date per user
-        humantime_dict_per_date = convert_to_human_timeProjIssues(time_dict)
+        humantime_dict_per_date = convert_to_human_time_proj_issues(time_dict)
     
     elif proj_id_str !='' and issue_id_str !='':
         # user wants a list of time info from a specific issue within a project
@@ -430,7 +548,7 @@ def main():
         time_dict = calc_time_from_issue_notes(proj_id_str, issue_id_str)
 
         # invoke the function that aggregates time spent info for users summarized to the day
-        time_spent_info_seconds = aggregate_time_spent_per_issue(time_dict)
+        time_spent_info_seconds = aggregate_time_spent_per_issue_per_user(time_dict)
 
         # invoke the function that converts seconds to human time for each date
         humantime_dict_per_date = convert_to_human_time(time_spent_info_seconds)
@@ -443,7 +561,7 @@ def main():
 
         # for each project convert the aggregated time info to human time
         for each_record in resp_time_info:
-            humantime_dict_per_date_for_proj = convert_to_human_timeProjIssues(
+            humantime_dict_per_date_for_proj = convert_to_human_time_proj_issues(
                 each_record)
             if sum_flatten(humantime_dict_per_date_for_proj):
                 humantime_dict_per_date.append(humantime_dict_per_date_for_proj)
@@ -455,5 +573,46 @@ def main():
     print()
     print('###################################################################')
 
+
+def main2():
+    '''
+    This will replace the current main
+    '''
+
+    # display menu and prompt user for input
+    choice_index = prompt_choice()
+
+    if choice_index == 1:
+        show_all_times_everything()
+    elif choice_index == 2:
+        # Prompt for more info
+        initial_date = input("Input the initial date in YYYY-MM-DD format: ")
+        final_date = input("Input the end date in YYYY-MM-DD format: ")
+
+        # preprocess the final dict based on dates to filter the info
+    elif choice_index == 3:
+        pass
+        # ToDO
+    elif choice_index == 4:
+        pass
+        # ToDO
+    elif choice_index == 5:
+        pass
+        # ToDO
+    elif choice_index == 6:
+        pass
+        # ToDO
+    elif choice_index == 7:
+        pass
+        # ToDO
+    elif choice_index == 8:
+        pass
+        # ToDO
+    elif choice_index == 9:
+        pass
+        # ToDO
+    elif choice_index == 10:
+        pass
+        # ToDO
 
 main()
