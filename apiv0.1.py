@@ -1,4 +1,4 @@
-#!/usr/local/opt/python/bin/
+# set interpreter and encoding
 
 #import the important modules
 import requests
@@ -77,13 +77,14 @@ def pull_one_proj_issue(projID,issueIID):
     issue_json = requests.get(endpoint, headers={"PRIVATE-TOKEN": config.theToken}).json()
     
     # extract the total spent time on the issue by all contributors
-    total_time_spent = issue_json['time_stats']['total_time_spent']
-    human_total_time_spent = issue_json['time_stats']['human_total_time_spent']
+    
+    # total_time_spent = issue_json['time_stats']['total_time_spent']
+    # human_total_time_spent = issue_json['time_stats']['human_total_time_spent']
 
-    return issue_json, total_time_spent, human_total_time_spent
+    return issue_json #, total_time_spent, human_total_time_spent
 
 
-def all_issues_for_proj(projID):
+def pull_all_issues_for_proj(projID):
     '''
     Pull all the issues within a specific project
     '''
@@ -95,7 +96,7 @@ def all_issues_for_proj(projID):
 
 def pull_issue_users(projID, issueIID):
     '''
-    Pull a collectoin of users who contributd to the specific issue in the proj
+    Pull a collection of users who contributd to the specific issue in the proj
     '''
 
     endpoint =proj_url + projID + '/' +'issues/' + issueIID 
@@ -103,6 +104,32 @@ def pull_issue_users(projID, issueIID):
     contributers = j_response[0]['assignees']
 
     return contributers
+
+
+def pull_all_project_all_issues():
+    '''
+    Pull all projects list from the matrix gitlab
+    '''
+
+    endpoint = proj_url
+    all_projs = pull_api_response(endpoint)
+
+    grand_list = []
+
+    # for each the project object in all_projs api response invoke the function to extract issues
+    for each_project in all_projs:
+        project_id = str(each_project["id"])
+        
+        # pull all issues for this current proj
+        all_issues_for_curr_proj = pull_all_issues_for_proj(project_id)
+
+        # compute time for all the issues in this current project
+        all_issue_time_dict = calc_time_from_multiple_issues(all_issues_for_curr_proj)
+        
+        # buil all the list of times for all issues for all projs
+        grand_list.append(all_issue_time_dict)
+    
+    return grand_list
 
 
 def calc_time_from_issue_notes(projID, issueIID):
@@ -190,7 +217,7 @@ def calc_time_from_issue_notes(projID, issueIID):
 
             # clear_time_spent()
             print('Time info has been cleared on this day: ',
-                  date_time_logged, "for issue#", issueIID)
+                  date_time_logged, "for project# ", projID, "for issue#", issueIID)
 
         else:
             pass
@@ -373,6 +400,9 @@ def human_time_delta(seconds):
 
 #     return total_issue_time
 
+# flatten nested containers and count them
+def sum_flatten(stuff): return len(sum(map(list, stuff), []))
+
 
 def main():
     """
@@ -387,7 +417,7 @@ def main():
     if proj_id_str != '' and issue_id_str =='':
         # user wants all the time info for all issues within the project
         # get list of time info from all the notes in all the issues 
-        all_issues_lst = all_issues_for_proj(proj_id_str)
+        all_issues_lst = pull_all_issues_for_proj(proj_id_str)
         time_dict = calc_time_from_multiple_issues(all_issues_lst)
 
         # invoke the function that converts seconds to human time
@@ -405,12 +435,25 @@ def main():
         # invoke the function that converts seconds to human time for each date
         humantime_dict_per_date = convert_to_human_time(time_spent_info_seconds)
     else:
-        print('INVALID INPUT.')
+        # user wants all the issues in all projects 
+        humantime_dict_per_date = []
+        # invoke the function that converts seconds to human time
+        # for each issue in project per date per user
+        resp_time_info = pull_all_project_all_issues()
+
+        # for each project convert the aggregated time info to human time
+        for each_record in resp_time_info:
+            humantime_dict_per_date_for_proj = convert_to_human_timeProjIssues(
+                each_record)
+            if sum_flatten(humantime_dict_per_date_for_proj):
+                humantime_dict_per_date.append(humantime_dict_per_date_for_proj)
+        print('PRINTING ALL TIME INFO ACROSS ALL PROJECTS.')
 
     print('###################################################################')
     print('Here is the time spent info you requested:-\n')
     print(humantime_dict_per_date)
     print()
     print('###################################################################')
+
 
 main()
