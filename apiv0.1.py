@@ -84,7 +84,7 @@ def pull_one_proj_issue(projID,issueIID):
     return issue_json #, total_time_spent, human_total_time_spent
 
 
-def pull_all_issues_for_proj(projID):
+def pull_all_issues_for_a_proj(projID):
     '''
     Pull all the issues within a specific project
     '''
@@ -121,12 +121,12 @@ def pull_all_project_all_issues():
         project_id = str(each_project["id"])
         
         # pull all issues for this current proj
-        all_issues_for_curr_proj = pull_all_issues_for_proj(project_id)
+        all_issues_for_curr_proj = pull_all_issues_for_a_proj(project_id)
 
         # compute time for all the issues in this current project
         all_issue_time_dict = calc_time_from_multiple_issues(all_issues_for_curr_proj)
         
-        # buil all the list of times for all issues for all projs
+        # buil the list of times for all issues for all projs
         grand_list.append(all_issue_time_dict)
     
     return grand_list
@@ -245,7 +245,7 @@ def calc_time_from_multiple_issues(proj_issues_list):
         time_spent_info_seconds = aggregate_time_spent_per_issue_per_user(
             issue_notes_time_dict)
         
-        if not sum_flatten(time_spent_info_seconds):
+        if sum_flatten(time_spent_info_seconds):
             # populate the list, if not empty
             extracted_time_info_list.append(time_spent_info_seconds)
 
@@ -285,7 +285,7 @@ def aggregate_time_spent_per_issue_per_user(result_dict):
                 # if there is an entry for that user, sum the time info as value
                 tmp_dict[update_date_in_dict]['tot_pos_time'] += each_lst_item['positivetime']
                 tmp_dict[update_date_in_dict]['tot_neg_time'] += each_lst_item['negativetime']
-        if not sum_flatten(tmp_dict):
+        if sum_flatten(tmp_dict):
             time_spent_dict_per_user.setdefault(each_user, []).append(tmp_dict)
 
     # maybe sort the final array based on dates before returning it
@@ -325,7 +325,7 @@ def aggregate_time_spent_per_issue(result_dict):
                 # if there is an entry for that user, sum the time info as value
                 tmp_dict[updateUserInDict]['tot_pos_time'] += each_lst_item['positivetime']
                 tmp_dict[updateUserInDict]['tot_neg_time'] += each_lst_item['negativetime']
-        if not sum_flatten(tmp_dict):
+        if sum_flatten(tmp_dict):
             time_spent_dict_per_date.setdefault(each_date, []).append(tmp_dict)
 
     # maybe sort the final array based on dates before returning it
@@ -532,17 +532,8 @@ def main():
     
     print()
 
-    if proj_id_str != '' and issue_id_str =='':
-        # user wants all the time info for all issues within the project
-        # get list of time info from all the notes in all the issues 
-        all_issues_lst = pull_all_issues_for_proj(proj_id_str)
-        time_dict = calc_time_from_multiple_issues(all_issues_lst)
 
-        # invoke the function that converts seconds to human time
-        # for each issue in project per date per user
-        humantime_dict_per_date = convert_to_human_time_proj_issues(time_dict)
-    
-    elif proj_id_str !='' and issue_id_str !='':
+    if proj_id_str !='' and issue_id_str !='':
         # user wants a list of time info from a specific issue within a project
         # get list of notes and a few other relevant info
         time_dict = calc_time_from_issue_notes(proj_id_str, issue_id_str)
@@ -552,6 +543,19 @@ def main():
 
         # invoke the function that converts seconds to human time for each date
         humantime_dict_per_date = convert_to_human_time(time_spent_info_seconds)
+    
+    elif proj_id_str != '' and issue_id_str =='':
+        # user wants all the time info for all issues within the project
+        # get list of time info from all the notes in all the issues 
+        all_issues_lst = pull_all_issues_for_a_proj(proj_id_str)
+        
+        # get the times from all the issues 
+        time_dict = calc_time_from_multiple_issues(all_issues_lst)
+
+        # invoke the function that converts seconds to human time
+        # for each issue in project per date per user
+        humantime_dict_per_date = convert_to_human_time_proj_issues(time_dict)
+    
     else:
         # user wants all the issues in all projects 
         humantime_dict_per_date = []
