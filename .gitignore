@@ -67,8 +67,7 @@ pyvenv.cfg
 pip-selfcheck.json
 
 # custom temporary files
-tmp*.py
-tmp*.txt
+tmp*.*
 Matrix_Works_API.md
 pagination.py
 testResponse.json
