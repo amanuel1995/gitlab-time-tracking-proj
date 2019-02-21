@@ -9,8 +9,8 @@ import json
 import re
 
 ###### LOAD RESPONSE FROM EXTERNAL JSON FILE ####################
-ext_json_file = open('testResponse.json').read()
-external_json_response = json.loads(ext_json_file)
+# ext_json_file = open('testResponse.json').read()
+# external_json_response = json.loads(ext_json_file)
 #################################################################
 
 #################################################################
@@ -27,7 +27,7 @@ users_url = "https://gitlab.matrix.msu.edu/api/v4/users"
 #################################################################
 # CONSTANTS used
 MAXOBJECTSPERPAGE = 100  # Gitlab Pagination max
-DEFAULTPERPAGE = 20     # Gitlab default pagination
+DEFAULTPERPAGE = 80     # Preferred items per page number
 #################################################################
 
 # params to inject while sending a GET request
@@ -212,8 +212,7 @@ def calc_time_from_issue_notes(projID, issueIID):
             date_time_logged = '%4d-%02d-%02d' % (dt.year, dt.month, dt.day)
 
             # reset the time to zero for everyone ... needs more work
-            final_ouput_dict.setdefault(note_author, []).append(
-                {'date': date_time_logged, "positivetime": pos_time, "negativetime": neg_time, "issue#": issueIID, "proj#": projID})
+            final_ouput_dict = {}
 
             # clear_time_spent()
             print('Time info has been cleared on: ',
@@ -442,25 +441,6 @@ def human_time_delta(seconds):
         return '%s%00ds' % (sign_string, seconds)
 
 
-# def net_tot_time_spent_issue(timespent_dict):
-#     '''
-#     calculate all the net time spent by all users in a single issue
-#     '''
-#     grand_tot_pos = 0
-#     grand_tot_neg = 0
-#     for date, user_times in timespent_dict.items():
-#         for items in user_times:
-#             for user, times in items.items():
-#                 grand_tot_pos += times['tot_pos_time']
-#                 grand_tot_neg += times['tot_neg_time']
-
-#     total_issue_time = grand_tot_pos - grand_tot_neg
-
-#     return total_issue_time
-
-# flatten nested containers and count them
-
-
 def show_all_times_everything():
     '''
     Pulls all projects and issues and computes all time info for all users from
@@ -483,43 +463,6 @@ def show_all_times_everything():
 
 
 def sum_flatten(stuff): return len(sum(map(list, stuff), []))
-
-
-def display_menu():
-    '''
-    Build and show menu of choices
-    '''
-    menu = {
-        "Show all user times from all projects and issues for all dates": 1,
-        "Show all user times from all projects in date range": 2,
-        "Show all user times from a specific project for all dates": 3,
-        "Show all user times from a specific issue for all dates": 4,
-        "Show all user times from a specific project in date range": 5,
-        "Show all user times from a specific issue in date range": 6,
-        "Show specific user's times from all projects and issues": 7,
-        "Show specific user's times from all projects and issues in date range": 8,
-        "Show specific user's times from a specific project": 9,
-        "Show specific user's times from a specific issue": 10,
-        "Show specific user's times from a specific project in a date range": 11,
-        "Show specific user's times from a specific issue in a date range": 12
-    }
-
-    for key, val in menu.items():
-        print(val, ":", key)
-
-    return menu
-    
-
-def prompt_choice():
-    print("################################################################")
-    menu = display_menu()
-    print("################################################################")
-
-    print()
-    user_choice = int(input("Please make a choice (1-12): "))
-    selected_num = list(menu.keys())[list(menu.values()).index(user_choice)]
-
-    return menu[selected_num]
 
 
 def main():
@@ -571,52 +514,9 @@ def main():
                 humantime_dict_per_date.append(humantime_dict_per_date_for_proj)
         print('PRINTING ALL TIME INFO ACROSS ALL PROJECTS.')
 
-    print('###################################################################')
-    print('Here is the time spent info you requested:-\n')
+    print('\n###################################################################')
+    print('\nHere is the time spent info you requested:-\n')
     print(humantime_dict_per_date)
-    print()
-    print('###################################################################')
-
-
-def main2():
-    '''
-    This will replace the current main
-    '''
-
-    # display menu and prompt user for input
-    choice_index = prompt_choice()
-
-    if choice_index == 1:
-        show_all_times_everything()
-    elif choice_index == 2:
-        # Prompt for more info
-        initial_date = input("Input the initial date in YYYY-MM-DD format: ")
-        final_date = input("Input the end date in YYYY-MM-DD format: ")
-
-        # preprocess the final dict based on dates to filter the info
-    elif choice_index == 3:
-        pass
-        # ToDO
-    elif choice_index == 4:
-        pass
-        # ToDO
-    elif choice_index == 5:
-        pass
-        # ToDO
-    elif choice_index == 6:
-        pass
-        # ToDO
-    elif choice_index == 7:
-        pass
-        # ToDO
-    elif choice_index == 8:
-        pass
-        # ToDO
-    elif choice_index == 9:
-        pass
-        # ToDO
-    elif choice_index == 10:
-        pass
-        # ToDO
+    print('\n###################################################################')
 
 main()
