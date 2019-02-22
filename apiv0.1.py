@@ -200,12 +200,12 @@ def calc_time_from_issue_notes(projID, issueIID):
             dt = dateutil.parser.parse(date_time_created)
             date_time_logged = '%4d-%02d-%02d' % (dt.year, dt.month, dt.day)
 
-            # reset the time to zero for everyone ... needs more work
-            final_ouput_dict = {}
+            # this case has been decided that it won't affect the time record
+            # final_ouput_dict = {}
 
-            # clear_time_spent()
+            # just for information
             print('Time info has been cleared on: ',
-                  date_time_logged, "for project# ", projID, "for issue#", issueIID)
+                  date_time_logged, "for project# ", projID, "for issue#", issueIID, ' by ', note_author)
 
         else:
             pass
