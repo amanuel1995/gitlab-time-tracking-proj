@@ -13,6 +13,7 @@ __pycache__/
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+.vscode-janus-debug
 
 #### VisualStudioCode Patch ###
 ## Ignore all local history of files
@@ -70,4 +71,5 @@ pip-selfcheck.json
 tmp*.*
 Matrix_Works_API.md
 pagination.py
-testResponse.json
+*.json
+*.csv
