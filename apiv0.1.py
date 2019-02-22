@@ -1,4 +1,5 @@
 # set interpreter and encoding
+# -*- coding: utf-8 -*-
 
 #import the important modules
 import requests
@@ -7,6 +8,7 @@ import pytimeparse
 import dateutil.parser
 import json
 import re
+import csv
 
 ###### LOAD RESPONSE FROM EXTERNAL JSON FILE ####################
 # ext_json_file = open('testResponse.json').read()
@@ -38,6 +40,7 @@ payload = {'per_page': DEFAULTPERPAGE}
 def pull_api_response(endpoint):
     """
     Loop through the pages and collect the entire response from API endpoint
+    return a list object containing api response
     """
 
     data_set = []
@@ -69,20 +72,6 @@ def pull_api_response(endpoint):
 
     return data_set
 
-def pull_one_proj_issue(projID,issueIID):
-    '''
-    pull a json object describing a single issue from a specific project
-    '''
-    endpoint = proj_url + '/' + projID + '/issues/' + issueIID
-    issue_json = requests.get(endpoint, headers={"PRIVATE-TOKEN": config.theToken}).json()
-    
-    # extract the total spent time on the issue by all contributors
-    
-    # total_time_spent = issue_json['time_stats']['total_time_spent']
-    # human_total_time_spent = issue_json['time_stats']['human_total_time_spent']
-
-    return issue_json #, total_time_spent, human_total_time_spent
-
 
 def pull_all_issues_for_a_proj(projID):
     '''
@@ -96,12 +85,12 @@ def pull_all_issues_for_a_proj(projID):
 
 def pull_issue_users(projID, issueIID):
     '''
-    Pull a collection of users who contributd to the specific issue in the proj
+    Pull a collection of users who contributed to the specific issue in the proj
     '''
 
     endpoint =proj_url + projID + '/' +'issues/' + issueIID 
     j_response = pull_api_response(endpoint)
-    contributers = j_response[0]['assignees']
+    contributers = j_response[0]['assignees'] # this actually is not the right way.
 
     return contributers
 
@@ -111,7 +100,7 @@ def pull_all_project_all_issues():
     Pull all projects list from the matrix gitlab
     '''
 
-    endpoint = proj_url
+    endpoint = proj_url + '/?sort=desc&order_by=updated_at'
     all_projs = pull_api_response(endpoint)
 
     grand_list = []
@@ -271,6 +260,7 @@ def aggregate_time_spent_per_issue_per_user(result_dict):
                 time_dict = {}
                 curr_date_to_dict = each_lst_item['date']
                 # if the time info is not there, get the info
+                time_dict['date'] = each_lst_item['date']
                 time_dict['tot_pos_time'] = each_lst_item['positivetime']
                 time_dict['tot_neg_time'] = each_lst_item['negativetime']
                 time_dict['issue_id'] = each_lst_item['issue#']
@@ -459,10 +449,34 @@ def show_all_times_everything():
         if sum_flatten(humantime_dict_per_date_for_proj):
             humantime_dict_per_date.append(
                 humantime_dict_per_date_for_proj)
-    print('PRINTING ALL TIME INFO ACROSS ALL PROJECTS.')
+    print('\nPRINTING ALL TIME INFO ACROSS ALL PROJECTS.')
 
 
 def sum_flatten(stuff): return len(sum(map(list, stuff), []))
+
+
+def export_to_csv(input_dict, filename):
+    '''
+    take the time info and user dictionary output and process it
+    write a csv file as output in the current directory
+    '''
+    with open( filename +'.csv', mode='w') as csv_file:
+        fields = ['employee', 'date', 'tot_pos_human_time',
+                  'tot_neg_human_time', 'issue_id', 'proj_id']
+
+        writer = csv.DictWriter(csv_file, fieldnames=fields)
+
+        # write the header to the csv
+        writer.writeheader()
+
+        # iterate through the output dict/json object and prep csv
+        for key, val in sorted(input_dict.items()):
+            for items in val:
+                for stuff, val in sorted(items.items()):
+                    row = {'employee': key, 'date': stuff, 'tot_pos_human_time':
+                           val['tot_pos_human_time'], 'tot_neg_human_time': val['tot_neg_human_time'], 'issue_id': val['issue_id'], 'proj_id': val['proj_id']}
+                    row.update(val)
+                    writer.writerow(row)
 
 
 def main():
@@ -486,6 +500,9 @@ def main():
 
         # invoke the function that converts seconds to human time for each date
         humantime_dict_per_date = convert_to_human_time(time_spent_info_seconds)
+        
+        # export aggregated user - time data as a csv 
+        export_to_csv(humantime_dict_per_date, 'user_times_same_proj_same_issue')
     
     elif proj_id_str != '' and issue_id_str =='':
         # user wants all the time info for all issues within the project
@@ -498,7 +515,13 @@ def main():
         # invoke the function that converts seconds to human time
         # for each issue in project per date per user
         humantime_dict_per_date = convert_to_human_time_proj_issues(time_dict)
-    
+
+        # export aggregated time info for each user**
+        i = 0
+        for each_record in humantime_dict_per_date:
+            filename_csv = 'user_times_'
+            export_to_csv(each_record, (filename_csv + str(i)))
+            i += 1    
     else:
         # user wants all the issues in all projects 
         humantime_dict_per_date = []
@@ -512,11 +535,6 @@ def main():
                 each_record)
             if sum_flatten(humantime_dict_per_date_for_proj):
                 humantime_dict_per_date.append(humantime_dict_per_date_for_proj)
-        print('PRINTING ALL TIME INFO ACROSS ALL PROJECTS.')
 
-    print('\n###################################################################')
-    print('\nHere is the time spent info you requested:-\n')
-    print(humantime_dict_per_date)
-    print('\n###################################################################')
-
+# invoke the main method
 main()
