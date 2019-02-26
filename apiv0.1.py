@@ -372,8 +372,8 @@ def convert_to_human_time(time_dict):
                 proj_id = eachtimeVal['proj_id']
 
                 # convert the seconds to human time (weeks,days,hours,mins and seconds)
-                tot_pos_human_time = human_time_delta(tot_pos_time)
-                tot_neg_human_time = human_time_delta(tot_neg_time)
+                tot_pos_human_time = convert_to_hrs(tot_pos_time)
+                tot_neg_human_time = convert_to_hrs(tot_neg_time)
 
                 tmp_dict[curr_user] = {
                     'tot_pos_human_time': tot_pos_human_time, 'tot_neg_human_time': tot_neg_human_time, 'issue_id': issue_id, 'proj_id': proj_id}
@@ -395,6 +395,14 @@ def convert_to_human_time_proj_issues(time_lst):
 
     return human_time_lst
 
+
+
+def convert_to_hrs(seconds):
+    sign_string = '-' if int(seconds) < 0 else ''
+    seconds = abs(int(seconds))
+
+    hrs = round(seconds/3600, 2)
+    return '%s%.2f' % (sign_string, hrs)
 
 def human_time_delta(seconds):
     '''
