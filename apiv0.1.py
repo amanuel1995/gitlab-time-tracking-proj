@@ -162,7 +162,7 @@ def calc_time_from_issue_notes(projID, issueIID):
         # check if a time spent information is in the note body else skip
         if re.match(time_info_pattern, note_body):
             # extract username and date
-            note_author = each_note["author"]["username"]
+            note_author = each_note["author"]["name"]
             date_time_created = each_note['created_at']
 
             # concatenate the notebody with username
@@ -185,12 +185,12 @@ def calc_time_from_issue_notes(projID, issueIID):
                 neg_time = -(total_seconds)
 
             final_ouput_dict.setdefault(note_author, []).append(
-                {'date': date_time_logged, "positivetime": pos_time, "negativetime": neg_time, "issue#": issueIID, "proj#": projID})
+                {'date': date_time_logged, "positivetime": pos_time, "negativetime": neg_time, "proj#": projID})
         
         # reset flag - reset all the values to 0 for every author; up to this day
         if re.match(time_removed_pattern, note_body):
             # extract who removed time spent info and the date
-            note_author = each_note["author"]["username"]
+            note_author = each_note["author"]["name"]
             date_time_created = each_note['created_at']
 
             # concatenate the notebody with username
@@ -240,6 +240,44 @@ def calc_time_from_multiple_issues(proj_issues_list):
     return extracted_time_info_list
 
 
+def aggregate_time_per_issue_per_user_per_date(result_dict):
+    """
+    Calculate the time spent for a single issue for every user 
+    produce a 2D output of date and the corresponding time spent information for each user
+    on that date
+    """
+
+    # further process the result
+    time_spent_dict_per_user = {}
+
+    for each_user, each_time_lst in result_dict.items():
+       
+       if each_user not in time_spent_dict_per_user:
+            time_spent_dict_per_user[each_user] = []
+            
+            for each_lst_item in each_time_lst:
+                time_dict = {}
+                # new user time info for this day
+                if not any(each_lst_item['date'] in d['date'] for d in time_spent_dict_per_user[each_user]):
+                    # if the time info is not there, get the info
+                    time_dict['date'] = each_lst_item['date']
+                    time_dict['proj_id'] = each_lst_item['proj#']
+                    time_dict['tot_pos_sec'] = each_lst_item['positivetime']
+                    time_dict['tot_neg_sec'] = each_lst_item['negativetime']
+                    time_dict['proj_id'] = each_lst_item['proj#']
+                    
+                    time_spent_dict_per_user[each_user].append(time_dict)
+                # add existing user info for this day
+                else:
+                    date_indx = next(i for i, d in enumerate(time_spent_dict_per_user[each_user]) if d['date']==each_lst_item['date'])
+                    # if there is an entry for that user, sum the time info as value
+                    time_spent_dict_per_user[each_user][date_indx]['tot_pos_sec'] += each_lst_item['positivetime']
+                    time_spent_dict_per_user[each_user][date_indx]['tot_neg_sec'] += each_lst_item['negativetime']
+                
+    return time_spent_dict_per_user
+
+
+
 def aggregate_time_spent_per_issue_per_user(result_dict):
     """
     Calculate the time spent for a single issue for every user 
@@ -260,11 +298,11 @@ def aggregate_time_spent_per_issue_per_user(result_dict):
                 time_dict = {}
                 curr_date_to_dict = each_lst_item['date']
                 # if the time info is not there, get the info
-                time_dict['date'] = each_lst_item['date']
+                time_dict['proj_id'] = each_lst_item['proj#']
                 time_dict['tot_pos_time'] = each_lst_item['positivetime']
                 time_dict['tot_neg_time'] = each_lst_item['negativetime']
-                time_dict['issue_id'] = each_lst_item['issue#']
-                time_dict["proj_id"] = each_lst_item["proj#"]
+                # time_dict['issue_id'] = each_lst_item['issue#']
+                time_dict['proj_id'] = each_lst_item['proj#']
                 # push the dict conataining time info into a temp dict with user as key
                 tmp_dict[curr_date_to_dict] = time_dict
             # add existing user info for this day
@@ -303,7 +341,7 @@ def aggregate_time_spent_per_issue(result_dict):
                 # if the time info is not there, get the info
                 time_dict['tot_pos_time'] = each_lst_item['positivetime']
                 time_dict['tot_neg_time'] = each_lst_item['negativetime']
-                time_dict['issue_id'] = each_lst_item['issue#']
+                # time_dict['issue_id'] = each_lst_item['issue#']
                 time_dict["proj_id"] = each_lst_item["proj#"]
                 # push the dict conataining time info into a temp dict with user as key
                 tmp_dict[curr_user_to_dict] = time_dict
@@ -319,6 +357,57 @@ def aggregate_time_spent_per_issue(result_dict):
 
     # maybe sort the final array based on dates before returning it
     return time_spent_dict_per_date
+
+
+def aggregate_issue_times_across_a_proj(issues_times_list):
+    '''
+    Aggregate all the time info across issues for the same project and produce a dict  
+    output format: user, [{date, net_hrs, proj_id}, ...]
+    '''
+    aggregated_by_user_date_dict = {}
+    for each_thing in issues_times_list:
+        for each_user, time_info in each_thing.items():
+
+            if each_user not in aggregated_by_user_date_dict:
+                aggregated_by_user_date_dict[each_user] = []
+                for each_lst_item in time_info:
+                    for each_date, time_info_dict in each_lst_item.items():
+                        tmp_dict = {}
+                        if each_date not in tmp_dict:
+                            tmp_dict['date'] = each_date
+                            tmp_dict['net_hrs'] = time_info_dict['net_hrs_spent']
+                            tmp_dict['proj_id'] = time_info_dict['proj_id']
+                            aggregated_by_user_date_dict[each_user].append(
+                                tmp_dict)
+
+                        else:
+                            tmp_dict['net_hrs'] += time_info_dict['net_hrs_spent']
+                            aggregated_by_user_date_dict[each_user].append(
+                                tmp_dict)
+            else:
+                for each_lst_item in time_info:
+                    # add new dates from other issues
+                    for each_date, time_info_dict in each_lst_item.items():
+                        tmp_dict = {}
+                        if not any(d['date'] == each_date for d in aggregated_by_user_date_dict[each_user]):
+                            tmp_dict['date'] = each_date
+                            tmp_dict['net_hrs'] = time_info_dict['net_hrs_spent']
+                            tmp_dict['proj_id'] = time_info_dict['proj_id']
+                            aggregated_by_user_date_dict[each_user].append(
+                                tmp_dict)
+                        else:
+                            # update net hours
+                            dict_indx = next(i for i, d in enumerate(
+                                aggregated_by_user_date_dict[each_user]) if d['date'] == each_date)
+                            net_hrs_so_far = '%.002f' % float(
+                                aggregated_by_user_date_dict[each_user][dict_indx]['net_hrs'])
+                            updated_net_hr = '%.002f' % (float(net_hrs_so_far) +
+                                                         float(time_info_dict['net_hrs_spent']))
+
+                            aggregated_by_user_date_dict[each_user][dict_indx]['net_hrs'] = '%.002f' % float(
+                                updated_net_hr)
+
+    return aggregated_by_user_date_dict
 
 
 def calculate_time_spent_per_proj(result_list):
@@ -351,6 +440,37 @@ def calculate_time_spent_per_proj_per_user(result_list):
     return all_issues_times
 
 
+def batch_convert_to_hrs(time_dict):
+    '''
+    Take the dictionary, traverse it and convert the total seconds info to
+    human readable hrs format and put it into a dict
+    '''
+    total_time_hrs_dict = {}
+
+    for user, user_times in time_dict.items():
+        if user not in total_time_hrs_dict:
+            total_time_hrs_dict[user] = []
+
+            for time_record in user_times:
+                hrs_dict = {}
+                # new user time info for this day
+                if not any(time_record['date'] in d['date'] for d in total_time_hrs_dict[user]):
+                    # if the time info is not there, get the info
+                    hrs_dict['date'] = time_record['date']
+                    hrs_dict['proj_id'] = time_record['proj_id']
+                    hrs_dict['tot_pos_hr'] = convert_to_hrs(
+                        time_record['tot_pos_sec'])
+                    hrs_dict['tot_neg_hr'] = convert_to_hrs(
+                        time_record['tot_neg_sec'])
+                    hrs_dict['net_hrs_spent'] = '%.002f' % (hrs_dict['tot_pos_hr'] -
+                                                            hrs_dict['tot_neg_hr'])
+                    
+                    total_time_hrs_dict[user].append(hrs_dict)
+
+    return total_time_hrs_dict
+
+
+
 def convert_to_human_time(time_dict):
     '''
     Take the dictionary, traverse it and convert the total seconds info to
@@ -368,15 +488,18 @@ def convert_to_human_time(time_dict):
                 tot_neg_time = eachtimeVal['tot_neg_time']
 
                 # grab the issue# and proj#
-                issue_id = eachtimeVal['issue_id']
+                #issue_id = eachtimeVal['issue_id']
                 proj_id = eachtimeVal['proj_id']
-
-                # convert the seconds to human time (weeks,days,hours,mins and seconds)
+                
+                # convert the seconds to human time (.2f hrs)
                 tot_pos_human_time = convert_to_hrs(tot_pos_time)
                 tot_neg_human_time = convert_to_hrs(tot_neg_time)
-
-                tmp_dict[curr_user] = {
-                    'tot_pos_human_time': tot_pos_human_time, 'tot_neg_human_time': tot_neg_human_time, 'issue_id': issue_id, 'proj_id': proj_id}
+                
+                # calculate the net time
+                net_seconds_spent = '%.002f' % (float(tot_pos_human_time) - float(tot_neg_human_time))
+                
+                tmp_dict[curr_user] = {'net_hrs_spent': net_seconds_spent,
+                    'tot_pos_hrs': tot_pos_human_time, 'tot_neg_hrs': tot_neg_human_time, 'proj_id': proj_id}
 
         humantime_dict_per_date.setdefault(key, []).append(tmp_dict)
 
@@ -396,13 +519,13 @@ def convert_to_human_time_proj_issues(time_lst):
     return human_time_lst
 
 
-
 def convert_to_hrs(seconds):
     sign_string = '-' if int(seconds) < 0 else ''
     seconds = abs(int(seconds))
 
     hrs = round(seconds/3600, 2)
-    return '%s%.2f' % (sign_string, hrs)
+    converted_hrs = '%s%.002f' % (sign_string, hrs)
+    return float(converted_hrs)
 
 def human_time_delta(seconds):
     '''
@@ -423,21 +546,26 @@ def human_time_delta(seconds):
     minutes, seconds = divmod(seconds, 60)
 
     if years > 0:
-        return '%s%dy %dmo %dw %dd %dh %00dm %00ds' % (sign_string, years, months, weeks, days, hours, minutes, seconds)
+        yrs_sec = '%s%dy %dmo %dw %dd %dh %00dm %00ds' % (sign_string, years, months, weeks, days, hours, minutes, seconds)
+        return int(yrs_sec)
     if months > 0:
-        return '%s%dmo %dw %dd %dh %00dm %00ds' % (sign_string, months, weeks, days, hours, minutes, seconds)
+        months_sec = '%s%dmo %dw %dd %dh %00dm %00ds' % (sign_string, months, weeks, days, hours, minutes, seconds)
+        return int(months_sec)
     if weeks > 0:
-        return '%s%dw %dd %dh %00dm %00ds' % (sign_string, weeks, days, hours, minutes, seconds)
-
+        weeks_sec = '%s%dw %dd %dh %00dm %00ds' % (sign_string, weeks, days, hours, minutes, seconds)
+        return int(weeks_sec)
     if days > 0:
-        return '%s%dd %dh %00dm %00ds' % (sign_string, days, hours, minutes, seconds)
+        days_sec = '%s%dd %dh %00dm %00ds' % (sign_string, days, hours, minutes, seconds)
+        return int(days_sec)
     elif hours > 0:
-        return '%s%dh %00dm %00ds' % (sign_string, hours, minutes, seconds)
+        hrs_sec = '%s%dh %00dm %00ds' % (sign_string, hours, minutes, seconds)
+        return int(hrs_sec)
     elif minutes > 0:
-        return '%s%00dm %00ds' % (sign_string, minutes, seconds)
+        mins_sec = '%s%00dm %00ds' % (sign_string, minutes, seconds)
+        return int(mins_sec)
     else:
-        return '%s%00ds' % (sign_string, seconds)
-
+        signed_sec = '%s%00ds' % (sign_string, seconds)
+        return int(signed_sec)
 
 def show_all_times_everything():
     '''
@@ -469,22 +597,21 @@ def export_to_csv(input_dict, filename):
     write a csv file as output in the current directory
     '''
     with open( filename +'.csv', mode='w') as csv_file:
-        fields = ['employee', 'date', 'tot_pos_human_time',
-                  'tot_neg_human_time', 'issue_id', 'proj_id']
+        fields = ['Employee', 'Date', 'Net Hours', 'Positive Hrs',
+                  'Negative Hrs', 'Project ID']
 
-        writer = csv.DictWriter(csv_file, fieldnames=fields)
+        writer = csv.DictWriter(csv_file, fieldnames=fields, extrasaction='ignore')
 
         # write the header to the csv
         writer.writeheader()
 
         # iterate through the output dict/json object and prep csv
-        for key, val in sorted(input_dict.items()):
-            for items in val:
-                for stuff, val in sorted(items.items()):
-                    row = {'employee': key, 'date': stuff, 'tot_pos_human_time':
-                           val['tot_pos_human_time'], 'tot_neg_human_time': val['tot_neg_human_time'], 'issue_id': val['issue_id'], 'proj_id': val['proj_id']}
-                    row.update(val)
-                    writer.writerow(row)
+        for user, user_info in sorted(input_dict.items()):
+            for items in user_info:
+                row = {'Employee': user, 'Date': items['date'], 'Net Hours': items['net_hrs_spent'], 'Positive Hrs':
+                           items['tot_pos_hr'], 'Negative Hrs': items['tot_neg_hr'], 'Project ID': items['proj_id']}
+                    # row.update(val)
+                writer.writerow(row)
 
 
 def main():
@@ -502,15 +629,15 @@ def main():
         # user wants a list of time info from a specific issue within a project
         # get list of notes and a few other relevant info
         time_dict = calc_time_from_issue_notes(proj_id_str, issue_id_str)
-
+        
         # invoke the function that aggregates time spent info for users summarized to the day
-        time_spent_info_seconds = aggregate_time_spent_per_issue_per_user(time_dict)
+        time_spent_info_seconds = aggregate_time_per_issue_per_user_per_date(time_dict)
 
         # invoke the function that converts seconds to human time for each date
-        humantime_dict_per_date = convert_to_human_time(time_spent_info_seconds)
-        
+        humantime_dict_per_date = batch_convert_to_hrs(time_spent_info_seconds)
+
         # export aggregated user - time data as a csv 
-        export_to_csv(humantime_dict_per_date, 'user_times_same_proj_same_issue')
+        export_to_csv(humantime_dict_per_date, 'user_times_' + 'proj_' + proj_id_str + '_issue_' + issue_id_str)
     
     elif proj_id_str != '' and issue_id_str =='':
         # user wants all the time info for all issues within the project
@@ -522,12 +649,15 @@ def main():
 
         # invoke the function that converts seconds to human time
         # for each issue in project per date per user
-        humantime_dict_per_date = convert_to_human_time_proj_issues(time_dict)
+        humantime_lst_per_date = convert_to_human_time_proj_issues(time_dict)
+
+        # aggregate all the issue times from the project
+        final_time_dict = aggregate_issue_times_across_a_proj(humantime_lst_per_date)
 
         # export aggregated time info for each user**
-        i = 0
-        for each_record in humantime_dict_per_date:
-            filename_csv = 'user_times_'
+        i = 1
+        for each_record in final_time_dict:
+            filename_csv = 'user_times_proj' + proj_id_str
             export_to_csv(each_record, (filename_csv + str(i)))
             i += 1    
     else:
