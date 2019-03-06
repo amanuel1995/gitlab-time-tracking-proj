@@ -76,6 +76,7 @@ def pull_api_response(endpoint):
 def pull_all_issues_for_a_proj(projID):
     '''
     Pull all the issues within a specific project
+    return issues_json (the list containing all issues for that project)
     '''
     endpoint = proj_url + '/' + projID + '/issues'
     issues_json = pull_api_response(endpoint)
@@ -86,9 +87,10 @@ def pull_all_issues_for_a_proj(projID):
 def pull_issue_users(projID, issueIID):
     '''
     Pull a collection of users who contributed to the specific issue in the proj
+    return contributers list of assignees
     '''
 
-    endpoint =proj_url + projID + '/' +'issues/' + issueIID 
+    endpoint = proj_url + projID + '/' +'issues/' + issueIID 
     j_response = pull_api_response(endpoint)
     contributers = j_response[0]['assignees'] # this actually is not the right way.
 
@@ -98,6 +100,7 @@ def pull_issue_users(projID, issueIID):
 def pull_all_project_all_issues():
     '''
     Pull all projects list from the matrix gitlab
+    return list of all the projects
     '''
 
     endpoint = proj_url + '/?sort=asc'
@@ -211,7 +214,7 @@ def calc_time_from_issue_notes(projID, issueIID):
             date_time_logged = '%4d-%02d-%02d' % (dt.year, dt.month, dt.day)
 
             # this case has been decided that it won't affect the time record
-            # final_ouput_dict = {}
+            # final_ouput_dict = {} # reset all times
 
             # just for information
             # print('Time info has been cleared on: ',
@@ -435,19 +438,19 @@ def calculate_time_spent_per_proj(result_list):
     return all_issues_times
 
 
-def calculate_time_spent_per_proj_per_user(result_list):
-    '''
-    Calculate the time spent for a single proj for every user and every issue by user
-    produce a 2D output of date and the corresponding time spent information for each user for all proj issues
-    on that date
-    '''
-    all_issues_times = []
+# def calculate_time_spent_per_proj_per_user(result_list):
+#     '''
+#     Calculate the time spent for a single proj for every user and every issue by user
+#     produce a 2D output of date and the corresponding time spent information for each user for all proj issues
+#     on that date
+#     '''
+#     all_issues_times = []
 
-    for items in result_list:
-        time_info_collection = aggregate_time_spent_per_issue_per_user(items)
-        all_issues_times.append(time_info_collection)
+#     for items in result_list:
+#         time_info_collection = aggregate_time_spent_per_issue_per_user(items)
+#         all_issues_times.append(time_info_collection)
 
-    return all_issues_times
+#     return all_issues_times
 
 
 def batch_convert_to_hrs(time_dict):
@@ -530,6 +533,9 @@ def convert_to_human_time_proj_issues(time_lst):
 
 
 def convert_to_hrs(seconds):
+    '''
+    Convert seconds into hrs to 2 decimal places
+    '''
     sign_string = '-' if int(seconds) < 0 else ''
     seconds = abs(int(seconds))
 
@@ -537,69 +543,9 @@ def convert_to_hrs(seconds):
     converted_hrs = '%s%.002f' % (sign_string, hrs)
     return float(converted_hrs)
 
-def human_time_delta(seconds):
-    '''
-    convert seconds into human time
-    eg. 3600s = 1h 0m
-    28860 = 1d 0h 1m 0s 
-    144000 = 1w 0d 0h 0m 0s
-    '''
-    sign_string = '-' if seconds < 0 else ''
-    seconds = abs(int(seconds))
-
-    years, seconds = divmod(seconds, 7513200)
-    months, seconds = divmod(seconds, 576000)
-    weeks, seconds = divmod(seconds, 144000)
-
-    days, seconds = divmod(seconds, 28800)
-    hours, seconds = divmod(seconds, 3600)
-    minutes, seconds = divmod(seconds, 60)
-
-    if years > 0:
-        yrs_sec = '%s%dy %dmo %dw %dd %dh %00dm %00ds' % (sign_string, years, months, weeks, days, hours, minutes, seconds)
-        return int(yrs_sec)
-    if months > 0:
-        months_sec = '%s%dmo %dw %dd %dh %00dm %00ds' % (sign_string, months, weeks, days, hours, minutes, seconds)
-        return int(months_sec)
-    if weeks > 0:
-        weeks_sec = '%s%dw %dd %dh %00dm %00ds' % (sign_string, weeks, days, hours, minutes, seconds)
-        return int(weeks_sec)
-    if days > 0:
-        days_sec = '%s%dd %dh %00dm %00ds' % (sign_string, days, hours, minutes, seconds)
-        return int(days_sec)
-    elif hours > 0:
-        hrs_sec = '%s%dh %00dm %00ds' % (sign_string, hours, minutes, seconds)
-        return int(hrs_sec)
-    elif minutes > 0:
-        mins_sec = '%s%00dm %00ds' % (sign_string, minutes, seconds)
-        return int(mins_sec)
-    else:
-        signed_sec = '%s%00ds' % (sign_string, seconds)
-        return int(signed_sec)
-
-def show_all_times_everything():
-    '''
-    Pulls all projects and issues and computes all time info for all users from
-    the very beginning to now.
-    '''
-    # user wants all the issues in all projects
-    humantime_dict_per_date = []
-    # invoke the function that converts seconds to human time
-    # for each issue in project per date per user
-    resp_time_info = pull_all_project_all_issues()
-
-    # for each project convert the aggregated time info to human time
-    for each_record in resp_time_info:
-        humantime_dict_per_date_for_proj = convert_to_human_time_proj_issues(
-            each_record)
-        if sum_flatten(humantime_dict_per_date_for_proj):
-            humantime_dict_per_date.append(
-                humantime_dict_per_date_for_proj)
-    print('\nPRINTING ALL TIME INFO ACROSS ALL PROJECTS.')
-
 
 def sum_flatten(stuff): return len(sum(map(list, stuff), []))
-
+    
 
 def export_to_csv(input_dict, filename):
     '''
@@ -621,6 +567,58 @@ def export_to_csv(input_dict, filename):
                     # row.update(val)
                 writer.writerow(row)
 
+def export_issue_info(proj_id_str, issue_id_str):
+    '''
+    export a list of time info for a specific issue within a project
+    '''
+    # get list of notes and a few other relevant info
+    time_dict = calc_time_from_issue_notes(proj_id_str, issue_id_str)
+
+    # invoke the function that aggregates time spent info for users summarized to the day
+    time_info_seconds = aggregate_time_per_issue_per_user_per_date(time_dict)
+
+    # invoke the function that converts seconds to human time for each date
+    time_dict_hrs = batch_convert_to_hrs(time_info_seconds)
+
+    # export aggregated user - time data as a csv
+    export_to_csv(time_dict_hrs, 'proj_' + proj_id_str + '_issue_' + issue_id_str)
+
+
+def export_proj_issues_info(proj_id_str):
+    '''
+    export the time info for all the issues for a specific project
+    '''
+    # get list of time info from all the notes in all the issues 
+    all_issues_lst = pull_all_issues_for_a_proj(proj_id_str)
+    
+    # get the times from all the issues 
+    time_dict = calc_time_from_multiple_issues(all_issues_lst)
+    
+    # invoke the function that converts seconds to human time
+    # for each issue in project per date per user
+    humantime_lst_per_date = convert_to_human_time_proj_issues(time_dict)
+    
+    # aggregate all the issue times from the project
+    final_time_dict = aggregate_issue_times_across_a_proj(humantime_lst_per_date)
+
+    # export aggregated time info for each user**
+    filename_csv = 'user_times_proj' + proj_id_str
+    export_to_csv(final_time_dict, (filename_csv))
+
+
+def export_all_time_info():
+    '''
+    export a list of time info for a all projects and issues
+    '''
+    # compute the time info for all issues and projects
+    all_time_info = pull_all_project_all_issues()
+
+    # for each project export a csv record
+    i =0
+    for each_record in all_time_info:
+        filename_csv = 'user_times_proj_'
+        export_to_csv(each_record, (filename_csv + str(i)))
+        i += 1
 
 def main():
     """
@@ -629,58 +627,18 @@ def main():
     # prompt user for inputs
     proj_id_str = input('Type the project ID or hit enter to skip: ')
     issue_id_str = input('Type the Issue ID or hit enter to skip: ')
-    
-    print()
-
 
     if proj_id_str !='' and issue_id_str !='':
-        # user wants a list of time info from a specific issue within a project
-        # get list of notes and a few other relevant info
-        time_dict = calc_time_from_issue_notes(proj_id_str, issue_id_str)
-        
-        # invoke the function that aggregates time spent info for users summarized to the day
-        time_spent_info_seconds = aggregate_time_per_issue_per_user_per_date(time_dict)
-
-        # invoke the function that converts seconds to human time for each date
-        humantime_dict_per_date = batch_convert_to_hrs(time_spent_info_seconds)
-
-        # export aggregated user - time data as a csv 
-        export_to_csv(humantime_dict_per_date, 'user_times_' + 'proj_' + proj_id_str + '_issue_' + issue_id_str)
+        # time info for an issue
+        export_issue_info(proj_id_str, issue_id_str)
     
     elif proj_id_str != '' and issue_id_str =='':
-        # user wants all the time info for all issues within the project
-        # get list of time info from all the notes in all the issues 
-        all_issues_lst = pull_all_issues_for_a_proj(proj_id_str)
-        
-        # get the times from all the issues 
-        time_dict = calc_time_from_multiple_issues(all_issues_lst)
-        
-        # invoke the function that converts seconds to human time
-        # for each issue in project per date per user
-        humantime_lst_per_date = convert_to_human_time_proj_issues(time_dict)
-        
-        # aggregate all the issue times from the project
-        final_time_dict = aggregate_issue_times_across_a_proj(humantime_lst_per_date)
-
-        # export aggregated time info for each user**
-        filename_csv = 'user_times_proj' + proj_id_str
-        export_to_csv(final_time_dict, (filename_csv))
+        # time info for all issues in the project
+        export_proj_issues_info(proj_id_str)
   
     else:
-        # user wants all the issues in all projects 
-        humantime_dict_per_date = []
-        # invoke the function that converts seconds to human time
-        # for each issue in project per date per user
-        resp_time_info = pull_all_project_all_issues()
+        # time info for all the issues in all projects 
+        export_all_time_info
 
-        # for each project convert the aggregated time info to human time
-        i =0
-        for each_record in resp_time_info:
-            filename_csv = 'user_times_proj_'
-            export_to_csv(each_record, (filename_csv + str(i)))
-            i += 1
-        print('\n\n')
-        print(resp_time_info)
-        print('\n\n')
 # invoke the main method
 main()
