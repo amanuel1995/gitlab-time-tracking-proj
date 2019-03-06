@@ -77,7 +77,7 @@ def pull_all_issues_for_a_proj(projID):
     '''
     Pull all the issues within a specific project
     '''
-    endpoint = proj_url + '/' + projID + '/issues' + '?sort=asc&order_by=updated_at'
+    endpoint = proj_url + '/' + projID + '/issues'
     issues_json = pull_api_response(endpoint)
 
     return issues_json
@@ -100,7 +100,7 @@ def pull_all_project_all_issues():
     Pull all projects list from the matrix gitlab
     '''
 
-    endpoint = proj_url + '/?sort=desc&order_by=updated_at'
+    endpoint = proj_url + '/?sort=asc'
     all_projs = pull_api_response(endpoint)
 
     grand_list = []
@@ -115,8 +115,18 @@ def pull_all_project_all_issues():
         # compute time for all the issues in this current project
         all_issue_time_dict = calc_time_from_multiple_issues(all_issues_for_curr_proj)
         
-        # buil the list of times for all issues for all projs
-        grand_list.append(all_issue_time_dict)
+        # invoke the function that converts seconds to human time
+        # for each issue in project per date per user
+        humantime_lst_per_date = convert_to_human_time_proj_issues(
+            all_issue_time_dict)
+
+
+        # aggregate all the issue times from the project
+        final_time_dict = aggregate_issue_times_across_a_proj(humantime_lst_per_date)
+
+        # build the list of times for all issues for all projs
+        if sum_flatten(final_time_dict):
+            grand_list.append(final_time_dict)
     
     return grand_list
 
@@ -204,8 +214,8 @@ def calc_time_from_issue_notes(projID, issueIID):
             # final_ouput_dict = {}
 
             # just for information
-            print('Time info has been cleared on: ',
-                  date_time_logged, "for project# ", projID, "for issue#", issueIID, ' by ', note_author)
+            # print('Time info has been cleared on: ',
+            #       date_time_logged, "for project# ", projID, "for issue#", issueIID, ' by ', note_author)
 
         else:
             pass
@@ -375,13 +385,13 @@ def aggregate_issue_times_across_a_proj(issues_times_list):
                         tmp_dict = {}
                         if each_date not in tmp_dict:
                             tmp_dict['date'] = each_date
-                            tmp_dict['net_hrs'] = time_info_dict['net_hrs_spent']
+                            tmp_dict['net_hrs_spent'] = time_info_dict['net_hrs_spent']
                             tmp_dict['proj_id'] = time_info_dict['proj_id']
                             aggregated_by_user_date_dict[each_user].append(
                                 tmp_dict)
 
                         else:
-                            tmp_dict['net_hrs'] += time_info_dict['net_hrs_spent']
+                            tmp_dict['net_hrs_spent'] += time_info_dict['net_hrs_spent']
                             aggregated_by_user_date_dict[each_user].append(
                                 tmp_dict)
             else:
@@ -391,7 +401,7 @@ def aggregate_issue_times_across_a_proj(issues_times_list):
                         tmp_dict = {}
                         if not any(d['date'] == each_date for d in aggregated_by_user_date_dict[each_user]):
                             tmp_dict['date'] = each_date
-                            tmp_dict['net_hrs'] = time_info_dict['net_hrs_spent']
+                            tmp_dict['net_hrs_spent'] = time_info_dict['net_hrs_spent']
                             tmp_dict['proj_id'] = time_info_dict['proj_id']
                             aggregated_by_user_date_dict[each_user].append(
                                 tmp_dict)
@@ -400,11 +410,11 @@ def aggregate_issue_times_across_a_proj(issues_times_list):
                             dict_indx = next(i for i, d in enumerate(
                                 aggregated_by_user_date_dict[each_user]) if d['date'] == each_date)
                             net_hrs_so_far = '%.002f' % float(
-                                aggregated_by_user_date_dict[each_user][dict_indx]['net_hrs'])
+                                aggregated_by_user_date_dict[each_user][dict_indx]['net_hrs_spent'])
                             updated_net_hr = '%.002f' % (float(net_hrs_so_far) +
                                                          float(time_info_dict['net_hrs_spent']))
 
-                            aggregated_by_user_date_dict[each_user][dict_indx]['net_hrs'] = '%.002f' % float(
+                            aggregated_by_user_date_dict[each_user][dict_indx]['net_hrs_spent'] = '%.002f' % float(
                                 updated_net_hr)
 
     return aggregated_by_user_date_dict
@@ -597,8 +607,7 @@ def export_to_csv(input_dict, filename):
     write a csv file as output in the current directory
     '''
     with open( filename +'.csv', mode='w') as csv_file:
-        fields = ['Employee', 'Date', 'Net Hours', 'Positive Hrs',
-                  'Negative Hrs', 'Project ID']
+        fields = ['Employee', 'Date', 'Net Hours', 'Project ID']
 
         writer = csv.DictWriter(csv_file, fieldnames=fields, extrasaction='ignore')
 
@@ -608,8 +617,7 @@ def export_to_csv(input_dict, filename):
         # iterate through the output dict/json object and prep csv
         for user, user_info in sorted(input_dict.items()):
             for items in user_info:
-                row = {'Employee': user, 'Date': items['date'], 'Net Hours': items['net_hrs_spent'], 'Positive Hrs':
-                           items['tot_pos_hr'], 'Negative Hrs': items['tot_neg_hr'], 'Project ID': items['proj_id']}
+                row = {'Employee': user, 'Date': items['date'], 'Net Hours': items['net_hrs_spent'], 'Project ID': items['proj_id']}
                     # row.update(val)
                 writer.writerow(row)
 
@@ -646,20 +654,18 @@ def main():
         
         # get the times from all the issues 
         time_dict = calc_time_from_multiple_issues(all_issues_lst)
-
+        
         # invoke the function that converts seconds to human time
         # for each issue in project per date per user
         humantime_lst_per_date = convert_to_human_time_proj_issues(time_dict)
-
+        
         # aggregate all the issue times from the project
         final_time_dict = aggregate_issue_times_across_a_proj(humantime_lst_per_date)
 
         # export aggregated time info for each user**
-        i = 1
-        for each_record in final_time_dict:
-            filename_csv = 'user_times_proj' + proj_id_str
-            export_to_csv(each_record, (filename_csv + str(i)))
-            i += 1    
+        filename_csv = 'user_times_proj' + proj_id_str
+        export_to_csv(final_time_dict, (filename_csv))
+  
     else:
         # user wants all the issues in all projects 
         humantime_dict_per_date = []
@@ -668,11 +674,13 @@ def main():
         resp_time_info = pull_all_project_all_issues()
 
         # for each project convert the aggregated time info to human time
+        i =0
         for each_record in resp_time_info:
-            humantime_dict_per_date_for_proj = convert_to_human_time_proj_issues(
-                each_record)
-            if sum_flatten(humantime_dict_per_date_for_proj):
-                humantime_dict_per_date.append(humantime_dict_per_date_for_proj)
-
+            filename_csv = 'user_times_proj_'
+            export_to_csv(each_record, (filename_csv + str(i)))
+            i += 1
+        print('\n\n')
+        print(resp_time_info)
+        print('\n\n')
 # invoke the main method
 main()
