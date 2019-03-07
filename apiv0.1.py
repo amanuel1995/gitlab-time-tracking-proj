@@ -9,6 +9,7 @@ import dateutil.parser
 import json
 import re
 import csv
+import pandas
 
 ###### LOAD RESPONSE FROM EXTERNAL JSON FILE ####################
 # ext_json_file = open('testResponse.json').read()
@@ -566,6 +567,14 @@ def export_to_csv(input_dict, filename):
                 row = {'Employee': user, 'Date': items['date'], 'Net Hours': items['net_hrs_spent'], 'Project ID': items['proj_id']}
                     # row.update(val)
                 writer.writerow(row)
+
+
+def make_dates_columns(filename):
+
+    df = pandas.read_csv(filename, sep=',')
+    transposed_csv = df.pivot(index='Employee', columns='Date',values='Net Hours').fillna(0)
+    
+    return transposed_csv
 
 def export_issue_info(proj_id_str, issue_id_str):
     '''
