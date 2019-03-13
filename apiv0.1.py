@@ -1,4 +1,5 @@
 # set interpreter and encoding
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 #import the important modules
@@ -30,11 +31,11 @@ users_url = "https://gitlab.matrix.msu.edu/api/v4/users"
 #################################################################
 # CONSTANTS used
 MAXOBJECTSPERPAGE = 100  # Gitlab Pagination max
-DEFAULTPERPAGE = 80     # Preferred items per page number
+DEFAULTPERPAGE = 20     # Preferred items per page number
 #################################################################
 
 # params to inject while sending a GET request
-payload = {'per_page': DEFAULTPERPAGE}
+payload = {'per_page': MAXOBJECTSPERPAGE}
 #################################################################
 
 
@@ -568,13 +569,23 @@ def export_to_csv(input_dict, filename):
                     # row.update(val)
                 writer.writerow(row)
 
+    return filename + '.csv'
 
 def make_dates_columns(filename):
+    '''
+    Transpose/pivot the the csv and bring the dates as columns 
+    '''
+    df = pandas.read_csv(filename, sep=',') # read in the csv file generated
+    acc_numbers = pandas.read_csv('account_numbers.csv') # read in the account numbers csv
 
-    df = pandas.read_csv(filename, sep=',')
-    transposed_csv = df.pivot(index='Employee', columns='Date',values='Net Hours').fillna(0)
+    transposed_df = df.pivot(index='Employee', columns='Date',values='Net Hours').fillna(0)
     
-    return transposed_csv
+    ready_df = pandas.merge(acc_numbers, transposed_df, how='right', left_on=[
+                            'Employee'], right_on=['Employee']).fillna(0)
+
+    ready_df.to_csv(filename, sep=',')
+    
+    return ready_df
 
 def export_issue_info(proj_id_str, issue_id_str):
     '''
@@ -590,8 +601,10 @@ def export_issue_info(proj_id_str, issue_id_str):
     time_dict_hrs = batch_convert_to_hrs(time_info_seconds)
 
     # export aggregated user - time data as a csv
-    export_to_csv(time_dict_hrs, 'proj_' + proj_id_str + '_issue_' + issue_id_str)
+    csv_out = export_to_csv(time_dict_hrs, 'proj_' + proj_id_str + '_issue_' + issue_id_str)
 
+    # make the dates the columns of the csv
+    make_dates_columns(csv_out)
 
 def export_proj_issues_info(proj_id_str):
     '''
@@ -612,8 +625,10 @@ def export_proj_issues_info(proj_id_str):
 
     # export aggregated time info for each user**
     filename_csv = 'user_times_proj' + proj_id_str
-    export_to_csv(final_time_dict, (filename_csv))
-
+    csv_output = export_to_csv(final_time_dict, (filename_csv))
+    
+    # make the dates the columns of the csv
+    make_dates_columns(csv_output)
 
 def export_all_time_info():
     '''
@@ -626,7 +641,9 @@ def export_all_time_info():
     i =0
     for each_record in all_time_info:
         filename_csv = 'user_times_proj_'
-        export_to_csv(each_record, (filename_csv + str(i)))
+        proj_id = [item['proj_id'] for d_ in each_record.values() for item in d_]
+        tmp_csv = export_to_csv(each_record, (filename_csv + str(proj_id[0]))) # convert dicts to csv
+        make_dates_columns(tmp_csv) # transpose dates as columns
         i += 1
 
 def main():
@@ -634,8 +651,12 @@ def main():
     The main function
     """
     # prompt user for inputs
-    proj_id_str = input('Type the project ID or hit enter to skip: ')
-    issue_id_str = input('Type the Issue ID or hit enter to skip: ')
+    # proj_id_str = input('Type the project ID or hit enter to skip: ')
+    # issue_id_str = input('Type the Issue ID or hit enter to skip: ')
+
+    # TESTING 
+    proj_id_str = ''
+    issue_id_str = ''
 
     if proj_id_str !='' and issue_id_str !='':
         # time info for an issue
@@ -647,7 +668,7 @@ def main():
   
     else:
         # time info for all the issues in all projects 
-        export_all_time_info
+        export_all_time_info()
 
 # invoke the main method
 main()
