@@ -271,7 +271,6 @@ def aggregate_time_per_issue_per_user_per_date(result_dict):
     return time_spent_dict_per_user
 
 
-
 def aggregate_time_spent_per_issue_per_user(result_dict):
     """
     Calculate the time spent for a single issue for every user 
@@ -449,7 +448,6 @@ def batch_convert_to_hrs(time_dict):
     return total_time_hrs_dict
 
 
-
 def convert_to_human_time(time_dict):
     '''
     Take the dictionary, traverse it and convert the total seconds info to
@@ -485,7 +483,7 @@ def convert_to_human_time(time_dict):
     return humantime_dict_per_date
 
 
-def convert_to_human_time_proj_issues(time_lst):
+def convert_to_hrs_proj_issues(time_lst):
     '''
     Take the dictionary, traverse it and convert the total seconds info to
     human readable (years, months, weeks,days,hours,mins and seconds) and populate the list 
@@ -510,137 +508,55 @@ def convert_to_hrs(seconds):
     return float(converted_hrs)
 
 
-def super_aggregate_times(issues_times_list):
-    '''
-    Aggregate all the time info across all issues for specific dates 
-    and produce a dict wit output format: {user, [{date, net_hrs},..[..]}
-    '''
-    aggregated_by_user_date_dict = {}
-    for each_thing in issues_times_list:
-        for each_user, time_info in each_thing.items():
-
-            if each_user not in aggregated_by_user_date_dict:
-                aggregated_by_user_date_dict[each_user] = []
-                for each_lst_item in time_info:
-                    tmp_dict = {}
-                    if each_lst_item['date'] not in tmp_dict:
-                        tmp_dict['date'] = each_lst_item['date']
-                        tmp_dict['net_hrs_spent'] = each_lst_item['net_hrs_spent']
-                        aggregated_by_user_date_dict[each_user].append(
-                            tmp_dict)
-
-                    else:
-                        tmp_dict['net_hrs_spent'] += each_lst_item['net_hrs_spent']
-                        aggregated_by_user_date_dict[each_user].append(
-                            tmp_dict)
-            else:
-                for each_lst_item in time_info:
-                    # add new dates from other projects
-                    tmp_dict = {}
-                    if not any(d['date'] == each_lst_item['date'] for d in aggregated_by_user_date_dict[each_user]):
-                        tmp_dict['date'] = each_lst_item['date']
-                        tmp_dict['net_hrs_spent'] = each_lst_item['net_hrs_spent']
-                        aggregated_by_user_date_dict[each_user].append(
-                            tmp_dict)
-                    else:
-                        # update net hours
-                        dict_indx = next(i for i, d in enumerate(
-                            aggregated_by_user_date_dict[each_user]) if d['date'] == each_lst_item['date'])
-                        net_hrs_so_far = '%.002f' % float(
-                            aggregated_by_user_date_dict[each_user][dict_indx]['net_hrs_spent'])
-                        updated_net_hr = '%.002f' % (float(net_hrs_so_far) +
-                                                     float(each_lst_item['net_hrs_spent']))
-
-                        aggregated_by_user_date_dict[each_user][dict_indx]['net_hrs_spent'] = '%.002f' % float(
-                            updated_net_hr)
-
-    return aggregated_by_user_date_dict
-
-
 def sum_flatten(stuff): return len(sum(map(list, stuff), []))
     
 
-def export_to_csv(input_dict, filename):
+def export_to_csv(input_lst, filename):
     '''
     take the time info and user dictionary output and process it
     write a csv file as output in the current directory
     '''
-    with open( filename +'.csv', mode='w') as csv_file:
-        fields = ['Employee', 'Date', 'Net Hours']
+    with open(filename + '.csv', mode='w') as csv_file:
+        fields = ['Employee', 'Proj', 'Date', 'Net Hours']
 
-        writer = csv.DictWriter(csv_file, fieldnames=fields, extrasaction='ignore')
+        writer = csv.DictWriter(
+            csv_file, fieldnames=fields, extrasaction='ignore')
 
         # write the header to the csv
         writer.writeheader()
 
         # iterate through the output dict/json object and prep csv
-        for user, user_info in sorted(input_dict.items()):
-            for items in user_info:
-                row = {'Employee': user, 'Date': items['date'], 'Net Hours': items['net_hrs_spent']}
+        for item in input_lst:
+            for user, user_info in sorted(item.items()):
+                for items in user_info:
+                    row = {'Employee': user, 'Proj': items['proj_id'],
+                           'Date': items['date'], 'Net Hours': items['net_hrs_spent']}
                     # row.update(val)
-                writer.writerow(row)
+                    writer.writerow(row)
 
     return filename + '.csv'
 
-def make_dates_columns(filename):
+
+def make_dates_columns(filename, start_date, end_date):
     '''
     Transpose/pivot the the csv and bring the dates as columns 
     '''
-    df = pandas.read_csv(filename, sep=',') # read in the csv file generated
-    acc_numbers = pandas.read_csv('account_numbers.csv') # read in the account numbers csv
+    df = pandas.read_csv(filename, sep=',')  # read in the csv file generated
 
-    transposed_df = df.pivot(index='Employee', columns='Date',values='Net Hours').fillna(0)
-    
-    ready_df = pandas.merge(acc_numbers, transposed_df, how='right', left_on=[
-                            'Employee'], right_on=['Employee']).fillna(0)
+    # select the desired date range
+    df = df.loc[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
 
-    ready_df.to_csv(filename, sep=',')
-    
-    return ready_df
+    # pivot_table around Date column
+    df2 = df.pivot_table(index=['Employee', 'Proj'],
+                         columns='Date', fill_value='0.00')
 
-def export_issue_info(proj_id_str, issue_id_str):
-    '''
-    export a list of time info for a specific issue within a project
-    '''
-    # get list of notes and a few other relevant info
-    time_dict = calc_time_from_issue_notes(proj_id_str, issue_id_str)
+    # save to CSV
+    df2.to_csv(filename, sep=',')
 
-    # invoke the function that aggregates time spent info for users summarized to the day
-    time_info_seconds = aggregate_time_per_issue_per_user_per_date(time_dict)
+    return df2
 
-    # invoke the function that converts seconds to human time for each date
-    time_dict_hrs = batch_convert_to_hrs(time_info_seconds)
 
-    # export aggregated user - time data as a csv
-    csv_out = export_to_csv(time_dict_hrs, 'proj_' + proj_id_str + '_issue_' + issue_id_str)
-
-    # make the dates the columns of the csv
-    make_dates_columns(csv_out)
-
-def export_proj_issues_info(proj_id_str):
-    '''
-    export the time info for all the issues for a specific project
-    '''
-    # get list of time info from all the notes in all the issues 
-    all_issues_lst = pull_all_issues_for_a_proj(proj_id_str)
-    
-    # get the times from all the issues 
-    time_dict = calc_time_from_multiple_issues(all_issues_lst)
-    
-    # invoke the function that converts seconds to work hrs for each record in time dict
-    humantime_lst_per_date = convert_to_human_time_proj_issues(time_dict)
-    
-    # aggregate all the issue times from the project
-    final_time_dict = aggregate_issue_times_across_a_proj(humantime_lst_per_date)
-
-    # export aggregated time info for each user**
-    filename_csv = 'user_times_proj' + proj_id_str
-    csv_output = export_to_csv(final_time_dict, (filename_csv))
-    
-    # make the dates the columns of the csv
-    make_dates_columns(csv_output)
-
-def export_all_time_info():
+def export_all_time_info(d1,d2):
     '''
     export a list of time info for a all projects and issues
     '''
@@ -661,7 +577,7 @@ def export_all_time_info():
             all_issues_for_curr_proj)
 
         # invoke the function that converts seconds to work hrs
-        humantime_lst_per_date = convert_to_human_time_proj_issues(
+        humantime_lst_per_date = convert_to_hrs_proj_issues(
             all_issue_time_dict)
 
         # aggregate all the issue times from the project
@@ -672,16 +588,16 @@ def export_all_time_info():
         if sum_flatten(final_time_dict):
             grand_list.append(final_time_dict)
     
-    # aggregate the hrs logged across all projects 
-    aggregate_time_for_date = super_aggregate_times(grand_list)
-    
     # produce a csv report
-    tmp_csv = export_to_csv(aggregate_time_for_date,'users_timesheet' )
+    tmp_csv = export_to_csv(grand_list,'users_timesheet' )
 
-    make_dates_columns(tmp_csv)  # transpose dates as columns
+    make_dates_columns(tmp_csv,d1,d2)  # transpose dates as columns
 
 
 def valid_date(s):
+    '''
+    Function to check the passed dates' format validity
+    '''
     try:
         return datetime.strptime(s, "%Y-%m-%d")
     except ValueError:
@@ -694,14 +610,12 @@ def main():
     The main function
     """
 
+    # default dates if the dates are not provided
     TODAY = datetime.today().strftime('%Y-%m-%d')
-    START = '1995-01-01'
+    START = '2019-01-01'
+    
     parser = argparse.ArgumentParser(prog='timesheet')
 
-    # FUNCTION_MAP = {'weekly': func1,
-    #                 'biweekly': func2}
-
-    # parser.add_argument('command', choices=FUNCTION_MAP.keys())
     parser.add_argument('-v', action='version', version='%(prog)s 0.01')
     parser.add_argument('--version', action='version', version='%(prog)s 0.01')
     parser.add_argument('-d1', '--start', dest='date1',
@@ -710,32 +624,16 @@ def main():
                         help='choose the end date for range', type=valid_date, default=TODAY)
 
     args = parser.parse_args()
-
-    funcv = args.date1, args.date2
-
-    print(funcv)
+    
+    d1 = args.date1.strftime('%Y-%m-%d')
+    d2 = args.date2.strftime('%Y-%m-%d')
+    
+    print(d1," " , d2)
 
     #   argument 1 : [start] [--startdate]
     #   argument 2 : [end] [-enddate]
 
-    # TESTING
-    proj_id_str = ''
-    issue_id_str = ''
-
-    if proj_id_str != '' and issue_id_str != '':
-        # time info for an issue
-        export_issue_info(proj_id_str, issue_id_str)
-
-    elif proj_id_str != '' and issue_id_str == '':
-        # time info for all issues in the project
-        export_proj_issues_info(proj_id_str)
-
-    else:
-        # time info for all the issues in all projects
-        export_all_time_info()
+    export_all_time_info(d1,d2)
 
 # invoke the main method
 main()
-
-end_time = time.time()
-print("Elapsed time was %g seconds" % (end_time - start_time))
