@@ -3,22 +3,18 @@
 # -*- coding: utf-8 -*-
 
 #import the important modules
-import requests
-import config
-import pytimeparse
-import dateutil.parser
-import json
-import re
-import csv
-import pandas
-import time
 import argparse
+import time
+import pandas
+import csv
+import re
+import json
+import dateutil.parser
+import pytimeparse
+import config
+import requests
 from datetime import datetime
-
-###### LOAD RESPONSE FROM EXTERNAL JSON FILE ####################
-# ext_json_file = open('testResponse.json').read()
-# external_json_response = json.loads(ext_json_file)
-#################################################################
+startTime = datetime.now()
 
 #################################################################
 # endpoints for GitLab API V.4
@@ -32,7 +28,7 @@ proj_url = "https://gitlab.matrix.msu.edu/api/v4/projects"
 users_url = "https://gitlab.matrix.msu.edu/api/v4/users"
 
 #################################################################
-# CONSTANTS used
+# CONSTANTS
 MAXOBJECTSPERPAGE = 100  # Gitlab Pagination max
 DEFAULTPERPAGE = 20     # Preferred items per page number
 #################################################################
@@ -61,7 +57,7 @@ def pull_api_response(endpoint):
     # handle where the response is only one page
     if r.links == {} or r.links['first']['url'] == r.links['last']['url']:
         return data_set
-    # handle pagination where the response is multiple page
+    # handle pagination where the response is multiple pages
     else:
         while r.links['next']['url'] != r.links['last']['url']:
             r = requests.get(r.links['next']['url'], headers={"PRIVATE-TOKEN": config.theToken})
@@ -89,19 +85,6 @@ def pull_all_issues_for_a_proj(projID):
     return issues_json
 
 
-def pull_issue_users(projID, issueIID):
-    '''
-    Pull a collection of users who contributed to the specific issue in the proj
-    return contributers list of assignees
-    '''
-
-    endpoint = proj_url + projID + '/' +'issues/' + issueIID 
-    j_response = pull_api_response(endpoint)
-    contributers = j_response[0]['assignees'] # this actually is not the right way.
-
-    return contributers
-
-
 def pull_all_project_all_issues():
     '''
     Pull all projects list from the matrix gitlab
@@ -116,10 +99,12 @@ def pull_all_project_all_issues():
 
 def calc_time_from_issue_notes(projID, issueIID):
     """
-    Given a single ticket, using the gitlab API, read the ticket and all comments on it
-    Get all the notes from an issue 
-    param : theURL the endpoint, issueIID
-    return: output the JSON response
+    Given a single ticket, read the ticket and all comments on it
+    Get all the time info from an issue 
+    :param str projID : the project ID
+    :param str issueIID : the issue ID
+    :return: the JSON response as list
+    :rtype: list
     """
 
     # build the URL endpoint and extract notes in the issue
@@ -128,17 +113,10 @@ def calc_time_from_issue_notes(projID, issueIID):
 
     notes_json_res = pull_api_response(built_endpoint)
 
-    ########### RESPONSE from EXTERNAL JSON File #####################
-    # Load the response from external JSON File
-    # uncomment the following line and change the jsonresponse.py file
-
-    # notes_json_res = external_json_response
-    ##################################################################
-
     concat_notes = ""
 
     final_ouput_dict = {}
-    # has unique dates as key and list of dicts; usernames as key and {+veTime : x, -veTime: y} as value
+    # has unique dates as key and list of dicts as value
 
     # Time info holders
     pos_time = 0
@@ -169,7 +147,7 @@ def calc_time_from_issue_notes(projID, issueIID):
             split_at_indx = concat_notes.find(time_substr)
             time_phrase = concat_notes[:split_at_indx-1]
 
-            # parse time phrase using the timeparse module and return number of seconds
+            # parse time phrase using the timeparse module and return seconds
             total_seconds = pytimeparse.timeparse(time_phrase)
 
             if (total_seconds >= 0):
@@ -180,7 +158,7 @@ def calc_time_from_issue_notes(projID, issueIID):
             final_ouput_dict.setdefault(note_author, []).append(
                 {'date': date_time_logged, "positivetime": pos_time, "negativetime": neg_time, "proj#": projID})
         
-        # reset flag - reset all the values to 0 for every author; up to this day
+        # check if a time removed information is in the note body
         if re.match(time_removed_pattern, note_body):
             # extract who removed time spent info and the date
             note_author = each_note["author"]["name"]
@@ -194,6 +172,7 @@ def calc_time_from_issue_notes(projID, issueIID):
             date_time_logged = '%4d-%02d-%02d' % (dt.year, dt.month, dt.day)
 
             # this case has been decided that it won't affect the time record
+            
             # final_ouput_dict = {} # reset all times
 
             # just for information
@@ -211,6 +190,9 @@ def calc_time_from_issue_notes(projID, issueIID):
 def calc_time_from_multiple_issues(proj_issues_list):
     '''
     Calculate the time from every issue for a given project
+    :param list proj_issues_list : the list of a project issues
+    :return: list of time info
+    :rtype: list
     '''
     extracted_time_info_list = []
 
@@ -233,55 +215,22 @@ def calc_time_from_multiple_issues(proj_issues_list):
     return extracted_time_info_list
 
 
-def aggregate_time_per_issue_per_user_per_date(result_dict):
-    """
-    Calculate the time spent for a single issue for every user 
-    produce a 2D output of date and the corresponding time spent 
-    information for each user
-    on that date
-    """
-
-    # further process the result
-    time_spent_dict_per_user = {}
-
-    for each_user, each_time_lst in result_dict.items():
-       
-       if each_user not in time_spent_dict_per_user:
-            time_spent_dict_per_user[each_user] = []
-            
-            for each_lst_item in each_time_lst:
-                time_dict = {}
-                # new user time info for this day
-                if not any(each_lst_item['date'] in d['date'] for d in time_spent_dict_per_user[each_user]):
-                    # if the time info is not there, get the info
-                    time_dict['date'] = each_lst_item['date']
-                    time_dict['proj_id'] = each_lst_item['proj#']
-                    time_dict['tot_pos_sec'] = each_lst_item['positivetime']
-                    time_dict['tot_neg_sec'] = each_lst_item['negativetime']
-                    time_dict['proj_id'] = each_lst_item['proj#']
-                    
-                    time_spent_dict_per_user[each_user].append(time_dict)
-                # add existing user info for this day
-                else:
-                    date_indx = next(i for i, d in enumerate(time_spent_dict_per_user[each_user]) if d['date']==each_lst_item['date'])
-                    # if there is an entry for that user, sum the time info as value
-                    time_spent_dict_per_user[each_user][date_indx]['tot_pos_sec'] += each_lst_item['positivetime']
-                    time_spent_dict_per_user[each_user][date_indx]['tot_neg_sec'] += each_lst_item['negativetime']
-                
-    return time_spent_dict_per_user
-
-
 def aggregate_time_spent_per_issue_per_user(result_dict):
     """
     Calculate the time spent for a single issue for every user 
-    produce a 2D output of date and the corresponding time spent information for each user
-    on that date
+    produce a 2D output of date and the corresponding time spent
+    information for each user on that date.
+
+    :param dict result_dict : the dictionary of user:times 
+    :return: dict of hrs logged in + and -
+    :rtype: dict
     """
 
     # further process the result
     time_spent_dict_per_user = {}
 
-    # final formatting should present dict of {user: {date: [positiveTimeLogged, negativeTimeLogged]}}
+    # final formatting should present dict of 
+    # {user: {date: [positiveTimeLogged, negativeTimeLogged]}}
     for each_user, each_time_lst in result_dict.items():
         tmp_dict = {}  # intermediate dict
         for each_lst_item in each_time_lst:
@@ -316,7 +265,11 @@ def aggregate_time_spent_per_issue(result_dict):
     """
     Calculate the time spent for a single issue for every user for the given date
     produce a 2D output of date and the corresponding time spent information for each user
-    on that date
+    on that date.
+
+    :param dict result_dict : the dictionary from another function
+    :return: 2D dict of hrs logged info vs user
+    :rtype: dict
     """
 
     # further process the result
@@ -356,6 +309,11 @@ def aggregate_issue_times_across_a_proj(issues_times_list):
     '''
     Aggregate all the time info across issues for the same project and produce a dict  
     output format: user, [{date, net_hrs, proj_id}, ...]
+
+    :param list issues_times_list : list of issues for 1 project
+    :return: aggregated dict
+    :rtype: dict
+
     '''
     aggregated_by_user_date_dict = {}
     for each_thing in issues_times_list:
@@ -407,7 +365,11 @@ def calculate_time_spent_per_proj(result_list):
     '''
     Calculate the time spent for a single proj for every user and every issue by date
     produce a 2D output of date and the corresponding time spent information for each user for all proj issues
-    on that date
+    on that date.
+
+    :param list result_list : list of dicts containing time info
+    :return: all issues times in a list
+    :rtype: list
     '''
     all_issues_times = []
 
@@ -421,7 +383,11 @@ def calculate_time_spent_per_proj(result_list):
 def batch_convert_to_hrs(time_dict):
     '''
     Take the dictionary, traverse it and convert the total seconds info to
-    human readable hrs format and put it into a dict
+    human readable hrs format and put it into a dict.
+
+    :param dict tme_dict : dictionary containing the time info in seconds
+    :return: the dict converted to hrs
+    :rtype: dict
     '''
     total_time_hrs_dict = {}
 
@@ -450,8 +416,12 @@ def batch_convert_to_hrs(time_dict):
 
 def convert_to_human_time(time_dict):
     '''
-    Take the dictionary, traverse it and convert the total seconds info to
-    human readable (years, months, weeks,days,hours,mins and seconds) and put it back to a dict
+    Take a dictionary, traverse it and convert the total seconds info to
+    human readable (hrs) and put it back to a dict.
+
+    :param dict time_dict : the dictionary from last output 
+    :return: dict of times converted to hrs with users
+    :rtype: dict
     '''
     humantime_dict_per_date = {}
 
@@ -485,11 +455,12 @@ def convert_to_human_time(time_dict):
 
 def convert_to_hrs_proj_issues(time_lst):
     '''
-    Take the dictionary, traverse it and convert the total seconds info to
-    human readable (years, months, weeks,days,hours,mins and seconds) and populate the list 
-    of dictionaries for the project issues
+    Take the dictionary, traverse it and convert the total seconds 
+    info to human readable (hrs) and populate the list of dictionaries 
+    for the project issues.
     '''
     human_time_lst = []
+    
     for each_obj in time_lst:
         human_time_lst.append(convert_to_human_time(each_obj))
 
@@ -498,23 +469,42 @@ def convert_to_hrs_proj_issues(time_lst):
 
 def convert_to_hrs(seconds):
     '''
-    Convert seconds into hrs to 2 decimal places
+    Convert seconds into hrs and format to 2 decimal places.
+
+    :param: integer or str
+    :return: hrs from the seconds
+    :rtype: float
     '''
     sign_string = '-' if int(seconds) < 0 else ''
     seconds = abs(int(seconds))
 
     hrs = round(seconds/3600, 2)
     converted_hrs = '%s%.002f' % (sign_string, hrs)
-    return float(converted_hrs)
+    
+    return float(converted_hrs) # this could be bad?
 
 
-def sum_flatten(stuff): return len(sum(map(list, stuff), []))
+def sum_flatten(stuff): 
+    '''
+    Check if the container is not empty by summing contents 
+    in the container.
+
+    :param: dict or list
+    :return: bool true if not empty
+    :rtype: bool
+    '''
+    return len(sum(map(list, stuff), []))
     
 
 def export_to_csv(input_lst, filename):
     '''
     take the time info and user dictionary output and process it
-    write a csv file as output in the current directory
+    write a csv file as output in the current directory.
+
+    :param list input_lst : the list of dictionaries to be written to csv
+    :param str filename : the filename for the csv writer
+    :return: filename concatenated with csv extension
+    :rtype: str
     '''
     with open(filename + '.csv', mode='w') as csv_file:
         fields = ['Employee', 'Proj', 'Date', 'Net Hours']
@@ -539,7 +529,13 @@ def export_to_csv(input_lst, filename):
 
 def make_dates_columns(filename, start_date, end_date):
     '''
-    Transpose/pivot the the csv and bring the dates as columns 
+    Transpose/pivot the the csv and bring the dates as columns.
+
+    :param str filename : the file namee
+    :param str start_date : initial date to filter by date
+    :param str end_date : the last date to filter by date
+    :return: dataframe with multi-index and dates as columns
+    :rtype: pandas.core.frame.DataFrame 
     '''
     df = pandas.read_csv(filename, sep=',')  # read in the csv file generated
 
@@ -549,16 +545,31 @@ def make_dates_columns(filename, start_date, end_date):
     # pivot_table around Date column
     df2 = df.pivot_table(index=['Employee', 'Proj'],
                          columns='Date', fill_value='0.00')
-
+    
     # save to CSV
     df2.to_csv(filename, sep=',')
+
+    # read back and skip some rows
+    df2 = pandas.read_csv(filename, skiprows=[0, 2])
+
+    # rename column names 
+    df2.rename(columns={'Unnamed: 1': 'Account'}, inplace=True)
+    df2.rename(columns={'Date': 'Full Name'}, inplace=True)
+    
+    # write final csv
+    df2.to_csv(filename, index=False, na_rep='0.00', date_format='%d-%b%')
 
     return df2
 
 
 def export_all_time_info(d1,d2):
     '''
-    export a list of time info for a all projects and issues
+    export a list of time info for a all projects and issues.
+
+    :param str d1 : start date for filtering records
+    :param str d2 : end date for filtering the records
+    :return: Nothing
+    :rtype: None
     '''
     # compute the time info for all issues and projects
     all_projs = pull_all_project_all_issues()
@@ -596,7 +607,11 @@ def export_all_time_info(d1,d2):
 
 def valid_date(s):
     '''
-    Function to check the passed dates' format validity
+    Function to check the passed dates' format validity.
+
+    :param str s : date string
+    :return: boolean
+    :rtype: bool
     '''
     try:
         return datetime.strptime(s, "%Y-%m-%d")
@@ -616,24 +631,20 @@ def main():
     
     parser = argparse.ArgumentParser(prog='timesheet')
 
-    parser.add_argument('-v', action='version', version='%(prog)s 0.01')
-    parser.add_argument('--version', action='version', version='%(prog)s 0.01')
-    parser.add_argument('-d1', '--start', dest='date1',
-                        help='choose the initial date for range', type=valid_date, default=START)
-    parser.add_argument('-d2', '--end', dest='date2',
-                        help='choose the end date for range', type=valid_date, default=TODAY)
+    parser.add_argument('-v','--version', action='version', version='%(prog)s v1.00')
+    parser.add_argument('-d1', dest='date1',
+                        help='choose the initial date for range. YYYY-MM-DD', type=valid_date, default=START)
+    parser.add_argument('-d2', dest='date2',
+                        help='choose the end date for range. YYYY-MM-DD', type=valid_date, default=TODAY)
 
     args = parser.parse_args()
     
     d1 = args.date1.strftime('%Y-%m-%d')
     d2 = args.date2.strftime('%Y-%m-%d')
     
-    print(d1," " , d2)
-
-    #   argument 1 : [start] [--startdate]
-    #   argument 2 : [end] [-enddate]
-
     export_all_time_info(d1,d2)
 
 # invoke the main method
 main()
+
+print((datetime.now() - startTime).seconds, " seconds.")
