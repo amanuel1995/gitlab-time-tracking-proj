@@ -562,7 +562,7 @@ def make_dates_columns(filename, start_date, end_date):
     return df2
 
 
-def export_all_time_info(d1,d2):
+def export_all_time_info(d1,d2, filename):
     '''
     export a list of time info for a all projects and issues.
 
@@ -600,7 +600,7 @@ def export_all_time_info(d1,d2):
             grand_list.append(final_time_dict)
     
     # produce a csv report
-    tmp_csv = export_to_csv(grand_list,'users_timesheet' )
+    tmp_csv = export_to_csv(grand_list, filename)
 
     make_dates_columns(tmp_csv,d1,d2)  # transpose dates as columns
 
@@ -627,8 +627,10 @@ def main():
 
     # default dates if the dates are not provided
     TODAY = datetime.today().strftime('%Y-%m-%d')
-    START = '2019-01-01'
-    
+    START = '2015-01-01'
+    FILENAME = 'timesheet'
+    OUTPUT = 'file'
+
     parser = argparse.ArgumentParser(prog='timesheet')
 
     parser.add_argument('-v','--version', action='version', version='%(prog)s v1.00')
@@ -636,15 +638,22 @@ def main():
                         help='choose the initial date for range. YYYY-MM-DD', type=valid_date, default=START)
     parser.add_argument('-d2', dest='date2',
                         help='choose the end date for range. YYYY-MM-DD', type=valid_date, default=TODAY)
+    parser.add_argument('-o', dest='output',
+                        help='Output to a file.', type=str, default=FILENAME)
+    parser.add_argument('-p', dest='print',
+                        help='Print output to std out.', default=OUTPUT)
 
     args = parser.parse_args()
     
     d1 = args.date1.strftime('%Y-%m-%d')
     d2 = args.date2.strftime('%Y-%m-%d')
     
-    export_all_time_info(d1,d2)
+    filename = args.output
+
+    export_all_time_info(d1,d2,filename )
 
 # invoke the main method
 main()
-
-print((datetime.now() - startTime).seconds, " seconds.")
+print('#####################################################')
+print('Finished job in',(datetime.now() - startTime).seconds, " seconds.")
+print('#####################################################')
