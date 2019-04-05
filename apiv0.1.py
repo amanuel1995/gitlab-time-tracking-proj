@@ -49,11 +49,11 @@ def pull_api_response(endpoint):
     # send GET request to API endpoint
     r = requests.get(endpoint, headers={"PRIVATE-TOKEN": config.theToken}, params=payload)
     raw = r.json()
-
+        
     # iterate through each object and append to data_set list
     for resp in raw:
         data_set.append(resp)
-
+    
     # handle where the response is only one page
     if r.links == {} or r.links['first']['url'] == r.links['last']['url']:
         return data_set
@@ -97,7 +97,7 @@ def pull_all_project_all_issues():
     return all_projs
 
 
-def calc_time_from_issue_notes(projID, issueIID):
+def calc_time_from_issue_notes(projID, issueIID, proj_name):
     """
     Given a single ticket, read the ticket and all comments on it
     Get all the time info from an issue 
@@ -156,7 +156,7 @@ def calc_time_from_issue_notes(projID, issueIID):
                 neg_time = -(total_seconds)
 
             final_ouput_dict.setdefault(note_author, []).append(
-                {'date': date_time_logged, "positivetime": pos_time, "negativetime": neg_time, "proj#": projID})
+                {'date': date_time_logged, "positivetime": pos_time, "negativetime": neg_time, "proj": proj_name})
         
         # check if a time removed information is in the note body
         if re.match(time_removed_pattern, note_body):
@@ -187,7 +187,7 @@ def calc_time_from_issue_notes(projID, issueIID):
     return final_ouput_dict
 
 
-def calc_time_from_multiple_issues(proj_issues_list):
+def calc_time_from_multiple_issues(proj_issues_list, proj_name):
     '''
     Calculate the time from every issue for a given project
     :param list proj_issues_list : the list of a project issues
@@ -202,7 +202,8 @@ def calc_time_from_multiple_issues(proj_issues_list):
         proj_id = str(each_item['project_id'])
 
         # call the function to extract time info from each note
-        issue_notes_time_dict = calc_time_from_issue_notes(proj_id, issue_iid)
+        issue_notes_time_dict = calc_time_from_issue_notes(
+            proj_id, issue_iid, proj_name)
 
         # aggregate time spent for every issue
         time_spent_info_seconds = aggregate_time_spent_per_issue_per_user(
@@ -218,7 +219,7 @@ def calc_time_from_multiple_issues(proj_issues_list):
 def aggregate_time_spent_per_issue_per_user(result_dict):
     """
     Calculate the time spent for a single issue for every user 
-    produce a 2D output of date and the corresponding time spent
+    and produce a 2D output of date and the corresponding time spent
     information for each user on that date.
 
     :param dict result_dict : the dictionary of user:times 
@@ -240,11 +241,11 @@ def aggregate_time_spent_per_issue_per_user(result_dict):
                 time_dict = {}
                 curr_date_to_dict = each_lst_item['date']
                 # if the time info is not there, get the info
-                time_dict['proj_id'] = each_lst_item['proj#']
+                time_dict['proj_id'] = each_lst_item['proj']
                 time_dict['tot_pos_time'] = each_lst_item['positivetime']
                 time_dict['tot_neg_time'] = each_lst_item['negativetime']
                 # time_dict['issue_id'] = each_lst_item['issue#']
-                time_dict['proj_id'] = each_lst_item['proj#']
+                time_dict['proj_id'] = each_lst_item['proj']
                 # push the dict conataining time info into a temp dict with user as key
                 tmp_dict[curr_date_to_dict] = time_dict
             # add existing user info for this day
@@ -316,6 +317,7 @@ def aggregate_issue_times_across_a_proj(issues_times_list):
 
     '''
     aggregated_by_user_date_dict = {}
+
     for each_thing in issues_times_list:
         for each_user, time_info in each_thing.items():
 
@@ -553,7 +555,7 @@ def make_dates_columns(filename, start_date, end_date):
     df2 = pandas.read_csv(filename, skiprows=[0, 2])
 
     # rename column names 
-    df2.rename(columns={'Unnamed: 1': 'Account'}, inplace=True)
+    df2.rename(columns={'Unnamed: 1': 'Project'}, inplace=True)
     df2.rename(columns={'Date': 'Full Name'}, inplace=True)
     
     # write final csv
@@ -571,37 +573,45 @@ def export_all_time_info(d1,d2, filename):
     :return: Nothing
     :rtype: None
     '''
+    print('Sending request to Matrix GitLab Server ...')
     # compute the time info for all issues and projects
     all_projs = pull_all_project_all_issues()
 
     grand_list = []
+    
+    proj_counter = 1
 
+    print(proj_counter, ' Processing the hours logged for the first Project ... ')
     # for each the project object in all_projs api response invoke the function to extract issues
     for each_project in all_projs:
         project_id = str(each_project["id"])
+        proj_name = each_project["name"]
 
         # pull all issues for this current proj
         all_issues_for_curr_proj = pull_all_issues_for_a_proj(project_id)
-
+        
         # compute time for all the issues in this current project
         all_issue_time_dict = calc_time_from_multiple_issues(
-            all_issues_for_curr_proj)
-
+            all_issues_for_curr_proj, proj_name)
+        
         # invoke the function that converts seconds to work hrs
         humantime_lst_per_date = convert_to_hrs_proj_issues(
             all_issue_time_dict)
-
+        
         # aggregate all the issue times from the project
         final_time_dict = aggregate_issue_times_across_a_proj(
             humantime_lst_per_date)
-
+        
         # build the list of times for all issues for all projs
         if sum_flatten(final_time_dict):
             grand_list.append(final_time_dict)
+        proj_counter += 1
+        print(proj_counter, ' Processing the hours logged for the next Project ... ')
+    
+    print('Done')
     
     # produce a csv report
     tmp_csv = export_to_csv(grand_list, filename)
-
     make_dates_columns(tmp_csv,d1,d2)  # transpose dates as columns
 
 
@@ -624,33 +634,35 @@ def main():
     """
     The main function
     """
-
-    # default dates if the dates are not provided
-    TODAY = datetime.today().strftime('%Y-%m-%d')
-    START = '2015-01-01'
-    FILENAME = 'timesheet'
-    OUTPUT = 'file'
-
-    parser = argparse.ArgumentParser(prog='timesheet')
-
-    parser.add_argument('-v','--version', action='version', version='%(prog)s v1.00')
-    parser.add_argument('-d1', dest='date1',
-                        help='choose the initial date for range. YYYY-MM-DD', type=valid_date, default=START)
-    parser.add_argument('-d2', dest='date2',
-                        help='choose the end date for range. YYYY-MM-DD', type=valid_date, default=TODAY)
-    parser.add_argument('-o', dest='output',
-                        help='Output to a file.', type=str, default=FILENAME)
-    parser.add_argument('-p', dest='print',
-                        help='Print output to std out.', default=OUTPUT)
-
-    args = parser.parse_args()
+    if __name__ == "__main__":
     
-    d1 = args.date1.strftime('%Y-%m-%d')
-    d2 = args.date2.strftime('%Y-%m-%d')
-    
-    filename = args.output
+        # default dates if the dates are not provided
+        TODAY = datetime.today().strftime('%Y-%m-%d')
+        START = '2015-01-01'
+        FILENAME = 'timesheet'
+        OUTPUT = 'file'
 
-    export_all_time_info(d1,d2,filename )
+        parser = argparse.ArgumentParser(prog='timesheet.py')
+
+        parser.add_argument('-v','--version', action='version', version='%(prog)s v1.00')
+        parser.add_argument('-d1', dest='date1',
+                            help='choose the initial date for range. YYYY-MM-DD', type=valid_date, default=START)
+        parser.add_argument('-d2', dest='date2',
+                            help='choose the end date for range. YYYY-MM-DD', type=valid_date, default=TODAY)
+        parser.add_argument('-o', dest='output',
+                            help='Output to a file.', nargs='?', const='Payroll_', default=FILENAME)
+        parser.add_argument('-p', dest='stdout',
+                            help='Output to std out.', default=OUTPUT)
+
+        args = parser.parse_args()
+        
+        d1 = args.date1.strftime('%Y-%m-%d')
+        d2 = args.date2.strftime('%Y-%m-%d')
+        
+        filename = args.output
+
+        export_all_time_info(d1,d2,filename )
+
 
 # invoke the main method
 main()
