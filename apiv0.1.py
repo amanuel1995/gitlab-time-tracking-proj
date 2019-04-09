@@ -606,7 +606,7 @@ def export_all_time_info(d1,d2, filename, stdout = 'False'):
         if sum_flatten(final_time_dict):
             grand_list.append(final_time_dict)
         proj_counter += 1
-        print(proj_counter, ' Processing the hours logged for the next Project ... ')
+        print(proj_counter, ' Processing the hours logged from project named:', proj_name )
     
     print('Done')
     
