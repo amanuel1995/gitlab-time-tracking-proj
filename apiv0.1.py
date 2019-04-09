@@ -564,7 +564,7 @@ def make_dates_columns(filename, start_date, end_date):
     return df2
 
 
-def export_all_time_info(d1,d2, filename):
+def export_all_time_info(d1,d2, filename, stdout = 'False'):
     '''
     export a list of time info for a all projects and issues.
 
@@ -612,8 +612,11 @@ def export_all_time_info(d1,d2, filename):
     
     # produce a csv report
     tmp_csv = export_to_csv(grand_list, filename)
-    make_dates_columns(tmp_csv,d1,d2)  # transpose dates as columns
-
+    final_out = make_dates_columns(tmp_csv,d1,d2)  # transpose dates as columns
+    print('#####################################################')
+    # if -p flag is set
+    if stdout == 'True':
+        print(final_out)
 
 def valid_date(s):
     '''
@@ -640,7 +643,7 @@ def main():
         TODAY = datetime.today().strftime('%Y-%m-%d')
         START = '2015-01-01'
         FILENAME = 'timesheet'
-        OUTPUT = 'file'
+        OUTPUT = 'False'
 
         parser = argparse.ArgumentParser(prog='timesheet.py')
 
@@ -652,7 +655,7 @@ def main():
         parser.add_argument('-o', dest='output',
                             help='Output to a file.', nargs='?', const='Payroll_', default=FILENAME)
         parser.add_argument('-p', dest='stdout',
-                            help='Output to std out.', default=OUTPUT)
+                            help='Output to std out.', nargs='?', const='True', default=OUTPUT)
 
         args = parser.parse_args()
         
@@ -660,12 +663,12 @@ def main():
         d2 = args.date2.strftime('%Y-%m-%d')
         
         filename = args.output
-
-        export_all_time_info(d1,d2,filename )
+        stdout = args.stdout
+        export_all_time_info(d1,d2,filename, stdout)
 
 
 # invoke the main method
 main()
-print('#####################################################')
+
 print('Finished job in',(datetime.now() - startTime).seconds, " seconds.")
 print('#####################################################')
