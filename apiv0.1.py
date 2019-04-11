@@ -569,7 +569,20 @@ def make_dates_columns(filename, start_date, end_date):
 
     # add a total hrs column
     df2.loc[:, 'Total'] = df2.sum(axis=1)
+
+    # Split name column into first and last name and drop the full name column
+    # df2[['First','Last']] = df2['Full Name'].str.split(n=1, expand=True)
+    df2[['First', 'Last']] = df2.pop('Full Name').str.split(n=1, expand=True)
+
+    my_columns = df2.columns.tolist()
     
+    # Move the last column to front twice
+    my_columns = my_columns[-1:] + my_columns[:-1]
+    my_columns = my_columns[-1:] + my_columns[:-1]
+    
+    # reconstruct the dataframe with such an order of columns
+    df2 = df2[my_columns]
+
     # write final csv
     df2.to_csv(filename, index=False, na_rep='0.00', date_format='%d-%b%')
 
