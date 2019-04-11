@@ -40,8 +40,16 @@ payload = {'per_page': MAXOBJECTSPERPAGE}
 
 def pull_api_response(endpoint):
     """
+    py:function:: pull_api_response(endpoint)
+
     Loop through the pages and collect the entire response from API endpoint
     return a list object containing api response
+
+    :param str endpoint : the end point from which the api response is fetched
+    :return: list of the response objects
+    :rtype: list
+    :raises requests.ConnectionError: if there is no internet connection to endpoint
+    :raises requests.Timeout: if the request timed out and no response was sent
     """
 
     data_set = []
@@ -100,7 +108,8 @@ def pull_all_project_all_issues():
 def calc_time_from_issue_notes(projID, issueIID, proj_name):
     """
     Given a single ticket, read the ticket and all comments on it
-    Get all the time info from an issue 
+    Get all the time info from an issue
+
     :param str projID : the project ID
     :param str issueIID : the issue ID
     :return: the JSON response as list
@@ -557,6 +566,9 @@ def make_dates_columns(filename, start_date, end_date):
     # rename column names 
     df2.rename(columns={'Unnamed: 1': 'Project'}, inplace=True)
     df2.rename(columns={'Date': 'Full Name'}, inplace=True)
+
+    # add a total hrs column
+    df2.loc[:, 'Total'] = df2.sum(axis=1)
     
     # write final csv
     df2.to_csv(filename, index=False, na_rep='0.00', date_format='%d-%b%')
