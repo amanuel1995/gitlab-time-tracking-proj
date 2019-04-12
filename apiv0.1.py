@@ -562,10 +562,10 @@ def make_dates_columns(filename, start_date, end_date):
                          columns='Date', fill_value='0.00')
 
     # save to CSV
-    df2.to_csv(filename + '.tmp.csv', sep=',')
+    df2.to_csv(filename, sep=',')
 
     # read back and skip some rows
-    df2 = pandas.read_csv(filename + '.tmp.csv', skiprows=[0, 2])
+    df2 = pandas.read_csv(filename, skiprows=[0, 2])
 
     # rename column names
     df2.rename(columns={'Unnamed: 1': 'Project'}, inplace=True)
@@ -597,7 +597,7 @@ def make_dates_columns(filename, start_date, end_date):
     df2.loc[:, 'Total'] = df2.sum(axis=1)
 
     # write final csv
-    df2.to_csv(filename + '.tmp.final.csv', index=False,
+    df2.to_csv(filename, index=False,
                na_rep='0.00', date_format='%d-%b%')
 
     return df2
