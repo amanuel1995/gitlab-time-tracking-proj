@@ -1,6 +1,6 @@
 # ignore the auth token file
 config.py
-
+config.py.dist
 # Jupyter Notebook
 .ipynb_checkpoints
 
