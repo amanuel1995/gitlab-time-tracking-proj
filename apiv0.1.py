@@ -13,7 +13,7 @@ import dateutil.parser
 import pytimeparse
 import config
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 startTime = datetime.now()
 
 #################################################################
@@ -548,6 +548,10 @@ def make_dates_columns(filename, start_date, end_date):
     :return: dataframe with multi-index and dates as columns
     :rtype: pandas.core.frame.DataFrame 
     '''
+    
+    arranged_col = ['First', 'Last', 'Project']
+    dates_col_lst = gen_dates_in_range(start_date, end_date)
+
     df = pandas.read_csv(filename, sep=',')  # read in the csv file generated
 
     # select the desired date range
@@ -556,35 +560,45 @@ def make_dates_columns(filename, start_date, end_date):
     # pivot_table around Date column
     df2 = df.pivot_table(index=['Employee', 'Proj'],
                          columns='Date', fill_value='0.00')
-    
+
     # save to CSV
-    df2.to_csv(filename, sep=',')
+    df2.to_csv(filename + '.tmp.csv', sep=',')
 
     # read back and skip some rows
-    df2 = pandas.read_csv(filename, skiprows=[0, 2])
+    df2 = pandas.read_csv(filename + '.tmp.csv', skiprows=[0, 2])
 
-    # rename column names 
+    # rename column names
     df2.rename(columns={'Unnamed: 1': 'Project'}, inplace=True)
     df2.rename(columns={'Date': 'Full Name'}, inplace=True)
 
-    # add a total hrs column
-    df2.loc[:, 'Total'] = df2.sum(axis=1)
-
-    # Split name column into first and last name and drop the full name column
+    # Split name column into first and last name
     # df2[['First','Last']] = df2['Full Name'].str.split(n=1, expand=True)
     df2[['First', 'Last']] = df2.pop('Full Name').str.split(n=1, expand=True)
 
     my_columns = df2.columns.tolist()
-    
+
     # Move the last column to front twice
     my_columns = my_columns[-1:] + my_columns[:-1]
     my_columns = my_columns[-1:] + my_columns[:-1]
-    
+
     # reconstruct the dataframe with such an order of columns
     df2 = df2[my_columns]
 
+    # add missing dates with values of 0.00
+    for n in range(len(dates_col_lst)):
+        if dates_col_lst[n] not in df2:
+            df2[dates_col_lst[n]] = 0.00
+
+    # re-arrange columns
+    arranged_col.extend(dates_col_lst)
+    df2 = df2[arranged_col]
+
+    # add the total hrs column
+    df2.loc[:, 'Total'] = df2.sum(axis=1)
+
     # write final csv
-    df2.to_csv(filename, index=False, na_rep='0.00', date_format='%d-%b%')
+    df2.to_csv(filename + '.tmp.final.csv', index=False,
+               na_rep='0.00', date_format='%d-%b%')
 
     return df2
 
@@ -656,6 +670,22 @@ def valid_date(s):
     except ValueError:
         msg = "Not a valid date: '{0}'.".format(s)
         raise argparse.ArgumentTypeError(msg)
+
+
+def gen_dates_in_range(start, end):
+    dates = []
+
+    d1 = datetime.strptime(start, '%Y-%m-%d')
+    d2 = datetime.strptime(end, '%Y-%m-%d')
+    
+    # timedelta
+    delta = d2 - d1         
+
+    for i in range(delta.days + 1):
+        d = d1 + timedelta(i)
+
+        dates.append(datetime.strftime(d, '%Y-%m-%d'))
+    return dates
 
 
 def main():
