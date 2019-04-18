@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-rm jobasset.tgz
+mrm ~~/stor/assets/gitlab-time-summary/jobasset.tgz
 
 tar -czvf jobasset.tgz *
 
