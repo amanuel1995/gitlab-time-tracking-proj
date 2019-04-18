@@ -65,6 +65,7 @@ def pull_api_response(endpoint):
     # handle where the response is only one page
     if r.links == {} or r.links['first']['url'] == r.links['last']['url']:
         return data_set
+    
     # handle pagination where the response is multiple pages
     else:
         while r.links['next']['url'] != r.links['last']['url']:
@@ -72,6 +73,7 @@ def pull_api_response(endpoint):
             raw = r.json()
             for items in raw:
                 data_set.append(items)
+    
     # grab the last page and append it
     if r.links['next']['url'] == r.links['last']['url']:
         r = requests.get(r.links['next']['url'], headers={"PRIVATE-TOKEN": config.theToken})
@@ -87,6 +89,7 @@ def pull_all_issues_for_a_proj(projID):
     Pull all the issues within a specific project
     return issues_json (the list containing all issues for that project)
     '''
+
     endpoint = proj_url + '/' + projID + '/issues'
     issues_json = pull_api_response(endpoint)
 
@@ -105,7 +108,7 @@ def pull_all_project_all_issues():
     return all_projs
 
 
-def calc_time_from_issue_notes(projID, issueIID, proj_name):
+def calc_time_from_issue_notes(proj_id, issueIID, proj_name):
     """
     Given a single ticket, read the ticket and all comments on it
     Get all the time info from an issue
@@ -117,7 +120,7 @@ def calc_time_from_issue_notes(projID, issueIID, proj_name):
     """
 
     # build the URL endpoint and extract notes in the issue
-    built_endpoint = proj_url + '/' + projID + '/issues/' + \
+    built_endpoint = proj_url + '/' + proj_id + '/issues/' + \
         issueIID + '/notes' + '?sort=asc&order_by=updated_at'
 
     notes_json_res = pull_api_response(built_endpoint)
@@ -165,29 +168,14 @@ def calc_time_from_issue_notes(projID, issueIID, proj_name):
                 neg_time = -(total_seconds)
 
             final_ouput_dict.setdefault(note_author, []).append(
-                {'date': date_time_logged, "positivetime": pos_time, "negativetime": neg_time, "proj": proj_name})
+                {'date': date_time_logged, "positivetime": pos_time, 
+                 "negativetime": neg_time, "proj_name": proj_name, "proj_id": proj_id})
         
         # check if a time removed information is in the note body
         if re.match(time_removed_pattern, note_body):
-            # extract who removed time spent info and the date
-            note_author = each_note["author"]["name"]
-            date_time_created = each_note['created_at']
-
-            # concatenate the notebody with username
-            concat_notes = (note_body) + ' ' + (note_author)
-
-            # preprocess the date
-            dt = dateutil.parser.parse(date_time_created)
-            date_time_logged = '%4d-%02d-%02d' % (dt.year, dt.month, dt.day)
-
             # this case has been decided that it won't affect the time record
-            
-            # final_ouput_dict = {} # reset all times
-
-            # just for information
-            # print('Time info has been cleared on: ',
-            #       date_time_logged, "for project# ", projID, "for issue#", issueIID, ' by ', note_author)
-
+            pass
+        
         else:
             pass
 
@@ -250,13 +238,14 @@ def aggregate_time_spent_per_issue_per_user(result_dict):
                 time_dict = {}
                 curr_date_to_dict = each_lst_item['date']
                 # if the time info is not there, get the info
-                time_dict['proj_id'] = each_lst_item['proj']
+                time_dict['proj_name'] = each_lst_item['proj_name']
                 time_dict['tot_pos_time'] = each_lst_item['positivetime']
                 time_dict['tot_neg_time'] = each_lst_item['negativetime']
-                # time_dict['issue_id'] = each_lst_item['issue#']
-                time_dict['proj_id'] = each_lst_item['proj']
+                time_dict['proj_id'] = each_lst_item['proj_id']
+
                 # push the dict conataining time info into a temp dict with user as key
                 tmp_dict[curr_date_to_dict] = time_dict
+            
             # add existing user info for this day
             elif(each_lst_item['date'] in tmp_dict):
                 # user to update
@@ -264,10 +253,10 @@ def aggregate_time_spent_per_issue_per_user(result_dict):
                 # if there is an entry for that user, sum the time info as value
                 tmp_dict[update_date_in_dict]['tot_pos_time'] += each_lst_item['positivetime']
                 tmp_dict[update_date_in_dict]['tot_neg_time'] += each_lst_item['negativetime']
+        
         if sum_flatten(tmp_dict):
             time_spent_dict_per_user.setdefault(each_user, []).append(tmp_dict)
 
-    # maybe sort the final array based on dates before returning it
     return time_spent_dict_per_user
 
 
@@ -297,10 +286,11 @@ def aggregate_time_spent_per_issue(result_dict):
                 # if the time info is not there, get the info
                 time_dict['tot_pos_time'] = each_lst_item['positivetime']
                 time_dict['tot_neg_time'] = each_lst_item['negativetime']
-                # time_dict['issue_id'] = each_lst_item['issue#']
-                time_dict["proj_id"] = each_lst_item["proj#"]
+                time_dict["proj_name"] = each_lst_item["proj_name"]
+                time_dict["proj_id"] = each_lst_item["proj_id"]
                 # push the dict conataining time info into a temp dict with user as key
                 tmp_dict[curr_user_to_dict] = time_dict
+            
             # add existing user info for this day
             elif(each_lst_item['user'] in tmp_dict):
                 # user to update
@@ -308,10 +298,10 @@ def aggregate_time_spent_per_issue(result_dict):
                 # if there is an entry for that user, sum the time info as value
                 tmp_dict[updateUserInDict]['tot_pos_time'] += each_lst_item['positivetime']
                 tmp_dict[updateUserInDict]['tot_neg_time'] += each_lst_item['negativetime']
+        
         if sum_flatten(tmp_dict):
             time_spent_dict_per_date.setdefault(each_date, []).append(tmp_dict)
 
-    # maybe sort the final array based on dates before returning it
     return time_spent_dict_per_date
 
 
@@ -338,6 +328,7 @@ def aggregate_issue_times_across_a_proj(issues_times_list):
                         if each_date not in tmp_dict:
                             tmp_dict['date'] = each_date
                             tmp_dict['net_hrs_spent'] = time_info_dict['net_hrs_spent']
+                            tmp_dict['proj_name'] = time_info_dict['proj_name']
                             tmp_dict['proj_id'] = time_info_dict['proj_id']
                             aggregated_by_user_date_dict[each_user].append(
                                 tmp_dict)
@@ -355,6 +346,7 @@ def aggregate_issue_times_across_a_proj(issues_times_list):
                             tmp_dict['date'] = each_date
                             tmp_dict['net_hrs_spent'] = time_info_dict['net_hrs_spent']
                             tmp_dict['proj_id'] = time_info_dict['proj_id']
+                            tmp_dict['proj_name'] = time_info_dict['proj_name']
                             aggregated_by_user_date_dict[each_user].append(
                                 tmp_dict)
                         else:
@@ -413,6 +405,7 @@ def batch_convert_to_hrs(time_dict):
                     # if the time info is not there, get the info
                     hrs_dict['date'] = time_record['date']
                     hrs_dict['proj_id'] = time_record['proj_id']
+                    hrs_dict['proj_name'] = time_record['proj_name']
                     hrs_dict['tot_pos_hr'] = convert_to_hrs(
                         time_record['tot_pos_sec'])
                     hrs_dict['tot_neg_hr'] = convert_to_hrs(
@@ -446,8 +439,8 @@ def convert_to_human_time(time_dict):
                 tot_neg_time = eachtimeVal['tot_neg_time']
 
                 # grab the issue# and proj#
-                #issue_id = eachtimeVal['issue_id']
                 proj_id = eachtimeVal['proj_id']
+                proj_name = eachtimeVal['proj_name']
                 
                 # convert the seconds to human time (.2f hrs)
                 tot_pos_human_time = convert_to_hrs(tot_pos_time)
@@ -457,7 +450,8 @@ def convert_to_human_time(time_dict):
                 net_seconds_spent = '%.002f' % (float(tot_pos_human_time) - float(tot_neg_human_time))
                 
                 tmp_dict[curr_user] = {'net_hrs_spent': net_seconds_spent,
-                    'tot_pos_hrs': tot_pos_human_time, 'tot_neg_hrs': tot_neg_human_time, 'proj_id': proj_id}
+                    'tot_pos_hrs': tot_pos_human_time, 'tot_neg_hrs': tot_neg_human_time, 'proj_id': proj_id,
+                    'proj_name': proj_name}
 
         humantime_dict_per_date.setdefault(key, []).append(tmp_dict)
 
@@ -518,7 +512,7 @@ def export_to_csv(input_lst, filename):
     :rtype: str
     '''
     with open(filename + '.csv', mode='w') as csv_file:
-        fields = ['Employee', 'Proj', 'Date', 'Net Hours']
+        fields = ['Employee', 'Proj', 'ProjID', 'Date', 'Net Hours']
 
         writer = csv.DictWriter(
             csv_file, fieldnames=fields, extrasaction='ignore')
@@ -530,9 +524,10 @@ def export_to_csv(input_lst, filename):
         for item in input_lst:
             for user, user_info in sorted(item.items()):
                 for items in user_info:
-                    row = {'Employee': user, 'Proj': items['proj_id'],
-                           'Date': items['date'], 'Net Hours': items['net_hrs_spent']}
-                    # row.update(val)
+                    row = {'Employee': user, 'Proj': items['proj_name'], 
+                    'ProjID': items['proj_id'],'Date': items['date'], 
+                    'Net Hours': items['net_hrs_spent']}
+                    # write the rows
                     writer.writerow(row)
 
     return filename + '.csv'
@@ -548,8 +543,7 @@ def make_dates_columns(filename, start_date, end_date):
     :return: dataframe with multi-index and dates as columns
     :rtype: pandas.core.frame.DataFrame 
     '''
-    
-    arranged_col = ['First', 'Last', 'Project']
+    arranged_col = ['Name', 'Project', 'ProjID', 'Total']
     dates_col_lst = gen_dates_in_range(start_date, end_date)
 
     df = pandas.read_csv(filename, sep=',')  # read in the csv file generated
@@ -558,49 +552,74 @@ def make_dates_columns(filename, start_date, end_date):
     df = df.loc[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
 
     # pivot_table around Date column
-    df2 = df.pivot_table(index=['Employee', 'Proj'],
+    df2 = df.pivot_table(index=['Employee', 'Proj','ProjID'],
                          columns='Date', fill_value='0.00')
 
     # save to CSV
-    df2.to_csv(filename, sep=',')
+    df2.to_csv(filename , sep=',')
 
     # read back and skip some rows
     df2 = pandas.read_csv(filename, skiprows=[0, 2])
 
     # rename column names
     df2.rename(columns={'Unnamed: 1': 'Project'}, inplace=True)
-    df2.rename(columns={'Date': 'Full Name'}, inplace=True)
+    df2.rename(columns={'Unnamed: 2': 'ProjID'}, inplace=True)
+    df2.rename(columns={'Date': 'Name'}, inplace=True)
 
-    # Split name column into first and last name
-    # df2[['First','Last']] = df2['Full Name'].str.split(n=1, expand=True)
-    df2[['First', 'Last']] = df2.pop('Full Name').str.split(n=1, expand=True)
+    # Split name into first & last name, swap first & last name position
+    names = df2['Name']
+    name_series = reverse_names(names)
+
+    # replace the name column with swapped names series
+    df2['Name'] = name_series
 
     my_columns = df2.columns.tolist()
-
-    # Move the last column to front twice
-    my_columns = my_columns[-1:] + my_columns[:-1]
-    my_columns = my_columns[-1:] + my_columns[:-1]
 
     # reconstruct the dataframe with such an order of columns
     df2 = df2[my_columns]
 
-    # add missing dates with values of 0.00
+    # add missing dates
     for n in range(len(dates_col_lst)):
         if dates_col_lst[n] not in df2:
             df2[dates_col_lst[n]] = 0.00
+
+
+    # add the total column, don't add the project ID into hrs
+    # df2.loc[:, 'Total'] = df2.sum(axis=1)
+
+    df2['Total'] = df2.drop('ProjID', axis=1).sum(axis=1)
 
     # re-arrange columns
     arranged_col.extend(dates_col_lst)
     df2 = df2[arranged_col]
 
-    # add the total hrs column
-    df2.loc[:, 'Total'] = df2.sum(axis=1)
+    # Floating number issues ... limit to 2 decimal plcaes on display
+    pandas.options.display.float_format = '{:,.2f}'.format
 
     # write final csv
-    df2.to_csv(filename, index=False,
-               na_rep='0.00', date_format='%d-%b%')
+    df2.to_csv(filename, index=False, na_rep='0.00', float_format='%.2f')
 
     return df2
+
+
+def reverse_name(name):
+    '''
+    Take a pandas series object of full names and reverse last name first 
+    and then the rest.
+    '''
+    split_name = name.split(" ")
+    last_name = split_name[len(split_name)-1]
+    first_name = split_name[0]
+
+    # handle middle names, extract initials, append to first names after space
+    if len(split_name) > 2:
+        first_name = first_name + " " + split_name[1][0] + "."
+
+    return last_name + " " + first_name
+
+
+def reverse_names(names):
+    return names.apply(reverse_name)
 
 
 def export_all_time_info(d1,d2, filename, stdout = 'False'):
@@ -623,11 +642,11 @@ def export_all_time_info(d1,d2, filename, stdout = 'False'):
     print(proj_counter, ' Processing the hours logged for the first Project ... ')
     # for each the project object in all_projs api response invoke the function to extract issues
     for each_project in all_projs:
-        project_id = str(each_project["id"])
+        proj_id = str(each_project["id"])
         proj_name = each_project["name"]
 
         # pull all issues for this current proj
-        all_issues_for_curr_proj = pull_all_issues_for_a_proj(project_id)
+        all_issues_for_curr_proj = pull_all_issues_for_a_proj(proj_id)
         
         # compute time for all the issues in this current project
         all_issue_time_dict = calc_time_from_multiple_issues(
