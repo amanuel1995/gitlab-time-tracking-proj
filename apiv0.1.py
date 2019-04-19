@@ -596,6 +596,9 @@ def make_dates_columns(filename, start_date, end_date):
     # Floating number issues ... limit to 2 decimal plcaes on display
     pandas.options.display.float_format = '{:,.2f}'.format
 
+    # sort by last name?
+    df2 = df2.sort_values('Name')
+
     # write final csv
     df2.to_csv(filename, index=False, na_rep='0.00', float_format='%.2f')
 
