@@ -1,8 +1,5 @@
 # ignore the auth token file
 config.py
-config.py.dist
-# Jupyter Notebook
-.ipynb_checkpoints
 
 # ignore some other files and folders
 __pycache__/
@@ -20,7 +17,6 @@ __pycache__/
 .history
 
 ### macOS ###
-## General
 .DS_Store
 .AppleDouble
 .LSOverride
@@ -57,7 +53,6 @@ venv.bak/
 
 ### Python.VirtualEnv Stack ###
 # Virtualenv
-# http://iamzed.com/2009/05/07/a-primer-on-virtualenv/
 [Bb]in
 [Ii]nclude
 [Ll]ib
@@ -69,7 +64,4 @@ pip-selfcheck.json
 
 # custom temporary files
 tmp*.*
-Matrix_Works_API.md
-pagination.py
-*.json
 *.csv
