@@ -716,7 +716,7 @@ def main():
     """
     if __name__ == "__main__":
     
-        # default dates if the dates are not provided
+        # default values if not provided
         TODAY = datetime.today().strftime('%Y-%m-%d')
         START = '2015-01-01'
         FILENAME = 'timesheet'
