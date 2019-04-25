@@ -22,23 +22,23 @@ def map_accounts (row):
     proj_id = pd.to_numeric(row['ProjID'])
     if proj_id < 20 :
         return mapdict[2]
-    if proj_id > 20 & proj_id < 40:
+    if proj_id > 20 and proj_id < 40:
         return mapdict[3]
-    if proj_id > 40 & proj_id < 60:
+    if proj_id > 40 and proj_id < 60:
         return mapdict[4]
-    if proj_id > 60 & proj_id < 80:
+    if proj_id > 60 and proj_id < 80:
         return mapdict[5]
-    if proj_id > 80 & proj_id < 100:
+    if proj_id > 80 and proj_id < 100:
         return mapdict[6]
-    if proj_id > 100 & proj_id < 120:
+    if proj_id > 100 and proj_id < 120:
         return mapdict[7]
-    if proj_id > 120 & proj_id < 140:
+    if proj_id > 120 and proj_id < 140:
         return mapdict[8]
-    if proj_id > 120 & proj_id < 160:
+    if proj_id > 120 and proj_id < 160:
         return mapdict[9]
-    if proj_id > 190 & proj_id < 210:
+    if proj_id > 190 and proj_id < 210:
         return mapdict[10]
-    if proj_id > 220 & proj_id < 261:
+    if proj_id > 220 and proj_id < 261:
         return mapdict[11]
     if proj_id < 262:
         return mapdict[12]
@@ -101,16 +101,17 @@ def main():
     # if __name__ == "__main__":
     
     # default values if not provided
-    FILENAME = 'timesheet.csv'
+    INFILENAME = 'timesheet.csv'
+    OUTFILENAME = 'timesheet_mapped.csv'
     OUTPUT = 'False'
 
     parser = argparse.ArgumentParser(prog='account_mapper.py')
 
     parser.add_argument('-v','--version', action='version', version='%(prog)s v1.00')
     parser.add_argument('-o', dest='output',
-                        help='specify output file.', nargs='?', const='Payroll_.csv', default=FILENAME)
+                        help='specify output file.', nargs='?', const='Payroll_.csv', default=OUTFILENAME)
     parser.add_argument('-i', dest='input',
-                        help='specify input file.', nargs='?', const='timesheet.csv', default=FILENAME)
+                        help='specify input file.', nargs='?', const='timesheet.csv', default=INFILENAME)
     parser.add_argument('-p', dest='stdout',
                         help='Output to std out.', nargs='?', const='True', default=OUTPUT)
 
