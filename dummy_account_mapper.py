@@ -98,32 +98,32 @@ def main():
     """
     The main function
     """
-    # if __name__ == "__main__":
+    if __name__ == "__main__":
     
-    # default values if not provided
-    INFILENAME = 'timesheet.csv'
-    OUTFILENAME = 'timesheet_mapped.csv'
-    OUTPUT = 'False'
+        # default values if not provided
+        INFILENAME = 'timesheet.csv'
+        OUTFILENAME = 'timesheet_mapped.csv'
+        OUTPUT = 'False'
 
-    parser = argparse.ArgumentParser(prog='account_mapper.py')
+        parser = argparse.ArgumentParser(prog='account_mapper.py')
 
-    parser.add_argument('-v','--version', action='version', version='%(prog)s v1.00')
-    parser.add_argument('-o', dest='output',
-                        help='specify output file.', nargs='?', const='Payroll_.csv', default=OUTFILENAME)
-    parser.add_argument('-i', dest='input',
-                        help='specify input file.', nargs='?', const='timesheet.csv', default=INFILENAME)
-    parser.add_argument('-p', dest='stdout',
-                        help='Output to std out.', nargs='?', const='True', default=OUTPUT)
+        parser.add_argument('-v','--version', action='version', version='%(prog)s v1.00')
+        parser.add_argument('-o', dest='output',
+                            help='specify output file.', nargs='?', const='Payroll_.csv', default=OUTFILENAME)
+        parser.add_argument('-i', dest='input',
+                            help='specify input file.', nargs='?', const='timesheet.csv', default=INFILENAME)
+        parser.add_argument('-p', dest='stdout',
+                            help='Output to std out.', nargs='?', const='True', default=OUTPUT)
 
-    args = parser.parse_args()
+        args = parser.parse_args()
 
-    # extract the CLI arguments
-    out_file = args.output
-    in_file = args.input
-    print_to_console_or_no = args.stdout
+        # extract the CLI arguments
+        out_file = args.output
+        in_file = args.input
+        print_to_console_or_no = args.stdout
 
-    # call the function with the values extracted
-    map_project_to_account(in_file, out_file, print_to_console_or_no)
+        # call the function with the values extracted
+        map_project_to_account(in_file, out_file, print_to_console_or_no)
 
 
 # invoke the main method
