@@ -583,10 +583,7 @@ def make_dates_columns(filename, start_date, end_date):
         if dates_col_lst[n] not in df2:
             df2[dates_col_lst[n]] = 0.00
 
-
-    # add the total column, don't add the project ID into hrs
-    # df2.loc[:, 'Total'] = df2.sum(axis=1)
-
+    # add the total column
     df2['Total'] = df2.drop('ProjID', axis=1).sum(axis=1)
 
     # re-arrange columns
